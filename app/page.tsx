@@ -2,68 +2,353 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
+    <main className="min-h-screen bg-[#faf9f5] text-[#193326]">
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 border-b border-[#e7e4dc] bg-[#faf9f5]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="Kaam Ka Sathi"
+              width={58}
+              height={58}
+              className="h-14 w-14 object-contain"
+            />
+
+            <div>
+              <h1 className="text-xl font-bold text-[#173d29]">
+                Kaam Ka Sathi
+              </h1>
+              <p className="text-xs text-gray-500">
+                Giving useful things a second chance
+              </p>
+            </div>
+          </div>
+
+          <div className="hidden items-center gap-8 md:flex">
+            <a href="#how" className="text-sm font-medium hover:text-[#c63868]">
+              How It Works
+            </a>
             <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              href="#categories"
+              className="text-sm font-medium hover:text-[#c63868]"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
+              Categories
+            </a>
             <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              href="#impact"
+              className="text-sm font-medium hover:text-[#c63868]"
             >
-              Learning
-            </a>{" "}
-            center.
+              Our Impact
+            </a>
+
+            <button className="rounded-xl border border-[#c63868] px-5 py-2 text-sm font-semibold text-[#c63868] transition hover:bg-[#c63868] hover:text-white">
+              Login
+            </button>
+          </div>
+
+          <button className="rounded-xl border border-gray-300 px-3 py-2 md:hidden">
+            ☰
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="overflow-hidden">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:py-24">
+          <div>
+            <span className="inline-block rounded-full bg-[#e9f1e5] px-4 py-2 text-sm font-semibold text-[#356b45]">
+              ♻️ Give • Share • Reuse
+            </span>
+
+            <h2 className="mt-6 text-5xl font-extrabold leading-tight tracking-tight md:text-6xl">
+              Jo aapke kaam ka nahi,
+              <span className="block text-[#c63868]">
+                kisi aur ke kaam ka ho sakta hai.
+              </span>
+            </h2>
+
+            <p className="mt-6 max-w-xl text-lg leading-8 text-gray-600">
+              Kaam Ka Sathi helps people find a useful second home for things
+              they no longer need — and helps people find things they actually
+              need.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              <button className="rounded-xl bg-[#173d29] px-7 py-3.5 font-semibold text-white shadow-lg transition hover:bg-[#24573b]">
+                I Have Something
+              </button>
+
+              <button className="rounded-xl border border-[#173d29] bg-white px-7 py-3.5 font-semibold text-[#173d29] transition hover:bg-[#eef4ed]">
+                I Need Something
+              </button>
+            </div>
+
+            <p className="mt-6 text-sm text-gray-500">
+              Your unused item could be exactly what someone else needs. 💚
+            </p>
+          </div>
+
+          {/* Logo / Concept Card */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="rounded-[2rem] bg-white p-6 shadow-xl shadow-gray-200">
+                <Image
+                  src="/logo.png"
+                  alt="Kaam Ka Sathi Logo"
+                  width={480}
+                  height={480}
+                  className="h-auto w-full max-w-md object-contain"
+                  priority
+                />
+              </div>
+
+              <div className="absolute -bottom-5 -left-5 rounded-2xl bg-white px-5 py-3 shadow-lg">
+                <p className="text-sm font-bold text-[#173d29]">
+                  ♻️ One item
+                </p>
+                <p className="text-xs text-gray-500">
+                  One more chance to be useful
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Problem */}
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-5xl px-6 text-center">
+          <p className="font-semibold text-[#c63868]">THE PROBLEM</p>
+
+          <h2 className="mt-3 text-4xl font-bold">
+            Useful things are often wasted simply because we don't know
+            where they should go.
+          </h2>
+
+          <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-gray-600">
+            Old books, clothes, bags, toys, furniture and other usable items
+            often remain unused at home or get thrown away. At the same time,
+            someone nearby may actually need them.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* How It Works */}
+      <section id="how" className="bg-[#faf9f5] py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mx-auto mb-14 max-w-2xl text-center">
+            <p className="font-semibold text-[#c63868]">HOW IT WORKS</p>
+
+            <h2 className="mt-3 text-4xl font-bold">
+              From unused to useful
+            </h2>
+
+            <p className="mt-4 text-gray-600">
+              A simple way to connect things with people who need them.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                icon: "📦",
+                title: "List an Item",
+                text: "Tell us about something useful that you no longer need.",
+              },
+              {
+                icon: "🙋",
+                title: "Post a Need",
+                text: "Tell the community what item you are looking for.",
+              },
+              {
+                icon: "🎯",
+                title: "Find a Match",
+                text: "Our system identifies items that may fulfill a need.",
+              },
+              {
+                icon: "♻️",
+                title: "Give It a New Life",
+                text: "Connect, exchange and mark the item as reused.",
+              },
+            ].map((step, index) => (
+              <div
+                key={step.title}
+                className="rounded-2xl bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e9f1e5] text-xl font-bold">
+                  {index + 1}
+                </div>
+
+                <div className="mt-5 text-4xl">{step.icon}</div>
+
+                <h3 className="mt-4 text-xl font-bold">{step.title}</h3>
+
+                <p className="mt-3 text-sm leading-6 text-gray-600">
+                  {step.text}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* Categories */}
+      <section id="categories" className="bg-white py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center">
+            <p className="font-semibold text-[#c63868]">WHAT CAN BE REUSED?</p>
+
+            <h2 className="mt-3 text-4xl font-bold">
+              Give everyday things another chance
+            </h2>
+          </div>
+
+          <div className="mt-12 grid grid-cols-2 gap-5 md:grid-cols-4">
+            {[
+              ["📚", "Books"],
+              ["👕", "Clothes"],
+              ["🎒", "Bags"],
+              ["🪑", "Furniture"],
+              ["🧸", "Toys"],
+              ["💻", "Electronics"],
+              ["✏️", "Stationery"],
+              ["🏠", "Household"],
+            ].map(([icon, name]) => (
+              <div
+                key={name}
+                className="rounded-2xl border border-[#ece9e1] bg-[#faf9f5] p-7 text-center transition hover:-translate-y-1 hover:shadow-md"
+              >
+                <div className="text-4xl">{icon}</div>
+                <p className="mt-3 font-semibold">{name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Smart Matching */}
+      <section className="bg-[#173d29] py-20 text-white">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 lg:grid-cols-2">
+          <div>
+            <p className="font-semibold text-[#f3a3bd]">SMART MATCHING</p>
+
+            <h2 className="mt-3 text-4xl font-bold">
+              The right thing can reach the right person.
+            </h2>
+
+            <p className="mt-5 leading-8 text-green-100">
+              Instead of making users search endlessly, Kaam Ka Sathi can
+              compare an available item with posted requirements and identify
+              potential matches.
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-white p-6 text-gray-800 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Potential Match</p>
+                <h3 className="mt-1 text-xl font-bold">
+                  BCA Programming Books
+                </h3>
+              </div>
+
+              <div className="rounded-full bg-[#e9f1e5] px-4 py-2 font-bold text-[#356b45]">
+                92% Match
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <div className="rounded-xl bg-gray-50 p-4">
+                ✓ Category matches
+              </div>
+              <div className="rounded-xl bg-gray-50 p-4">
+                ✓ Requirement is relevant
+              </div>
+              <div className="rounded-xl bg-gray-50 p-4">
+                ✓ Nearby locality
+              </div>
+              <div className="rounded-xl bg-gray-50 p-4">
+                ✓ Suitable condition
+              </div>
+            </div>
+
+            <button className="mt-6 w-full rounded-xl bg-[#c63868] py-3 font-semibold text-white">
+              View Match
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Impact */}
+      <section id="impact" className="py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="rounded-3xl bg-[#f1eee6] p-8 md:p-12">
+            <div className="text-center">
+              <p className="font-semibold text-[#c63868]">OUR IMPACT</p>
+
+              <h2 className="mt-3 text-4xl font-bold">
+                Every reuse counts.
+              </h2>
+            </div>
+
+            <div className="mt-12 grid grid-cols-2 gap-5 md:grid-cols-4">
+              {[
+                ["120+", "Items Reused"],
+                ["85+", "People Connected"],
+                ["52", "Books Shared"],
+                ["18", "Families Helped"],
+              ].map(([number, label]) => (
+                <div
+                  key={label}
+                  className="rounded-2xl bg-white p-7 text-center"
+                >
+                  <p className="text-3xl font-extrabold text-[#173d29]">
+                    {number}
+                  </p>
+                  <p className="mt-2 text-sm text-gray-500">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="bg-white pb-20">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <Image
+            src="/logo.png"
+            alt="Kaam Ka Sathi"
+            width={130}
+            height={130}
+            className="mx-auto"
+          />
+
+          <h2 className="mt-5 text-4xl font-bold">
+            Kisi ki zarurat, kisi ki extra cheez se poori ho sakti hai.
+          </h2>
+
+          <p className="mx-auto mt-4 max-w-2xl text-gray-600">
+            Let's make reuse easier, more meaningful and more local.
+          </p>
+
+          <button className="mt-8 rounded-xl bg-[#c63868] px-8 py-3.5 font-semibold text-white shadow-lg transition hover:bg-[#a92e57]">
+            Get Started
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-[#e7e4dc] bg-[#faf9f5]">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-8 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
+          <p>© 2026 Kaam Ka Sathi</p>
+
+          <p>
+            आपके पास बेकार नहीं, किसी के लिए उपहार है! ♻️
+          </p>
+        </div>
+      </footer>
+    </main>
   );
 }
