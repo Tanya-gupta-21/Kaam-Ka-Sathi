@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Image from "next/image";
 
 export default function Home() {
@@ -26,15 +27,20 @@ export default function Home() {
           </div>
 
           <div className="hidden items-center gap-8 md:flex">
-            <a href="#how" className="text-sm font-medium hover:text-[#c63868]">
+            <a
+              href="#how"
+              className="text-sm font-medium hover:text-[#c63868]"
+            >
               How It Works
             </a>
+
             <a
               href="#categories"
               className="text-sm font-medium hover:text-[#c63868]"
             >
               Categories
             </a>
+
             <a
               href="#impact"
               className="text-sm font-medium hover:text-[#c63868]"
@@ -42,11 +48,16 @@ export default function Home() {
               Our Impact
             </a>
 
-            <button className="rounded-xl border border-[#c63868] px-5 py-2 text-sm font-semibold text-[#c63868] transition hover:bg-[#c63868] hover:text-white">
+            {/* LOGIN */}
+            <Link
+              href="/login"
+              className="rounded-xl border border-[#c63868] px-5 py-2 text-sm font-semibold text-[#c63868] transition hover:bg-[#c63868] hover:text-white"
+            >
               Login
-            </button>
+            </Link>
           </div>
 
+          {/* Mobile Menu */}
           <button className="rounded-xl border border-gray-300 px-3 py-2 md:hidden">
             ☰
           </button>
@@ -74,14 +85,23 @@ export default function Home() {
               need.
             </p>
 
+            {/* HERO BUTTONS */}
             <div className="mt-8 flex flex-wrap gap-4">
-              <button className="rounded-xl bg-[#173d29] px-7 py-3.5 font-semibold text-white shadow-lg transition hover:bg-[#24573b]">
+              {/* I HAVE SOMETHING */}
+              <Link
+                href="/items/new"
+                className="rounded-xl bg-[#173d29] px-7 py-3.5 font-semibold text-white shadow-lg transition hover:bg-[#24573b]"
+              >
                 I Have Something
-              </button>
+              </Link>
 
-              <button className="rounded-xl border border-[#173d29] bg-white px-7 py-3.5 font-semibold text-[#173d29] transition hover:bg-[#eef4ed]">
+              {/* I NEED SOMETHING */}
+              <Link
+                href="/dashboard"
+                className="rounded-xl border border-[#173d29] bg-white px-7 py-3.5 font-semibold text-[#173d29] transition hover:bg-[#eef4ed]"
+              >
                 I Need Something
-              </button>
+              </Link>
             </div>
 
             <p className="mt-6 text-sm text-gray-500">
@@ -107,6 +127,7 @@ export default function Home() {
                 <p className="text-sm font-bold text-[#173d29]">
                   ♻️ One item
                 </p>
+
                 <p className="text-xs text-gray-500">
                   One more chance to be useful
                 </p>
@@ -197,7 +218,9 @@ export default function Home() {
       <section id="categories" className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center">
-            <p className="font-semibold text-[#c63868]">WHAT CAN BE REUSED?</p>
+            <p className="font-semibold text-[#c63868]">
+              WHAT CAN BE REUSED?
+            </p>
 
             <h2 className="mt-3 text-4xl font-bold">
               Give everyday things another chance
@@ -220,6 +243,7 @@ export default function Home() {
                 className="rounded-2xl border border-[#ece9e1] bg-[#faf9f5] p-7 text-center transition hover:-translate-y-1 hover:shadow-md"
               >
                 <div className="text-4xl">{icon}</div>
+
                 <p className="mt-3 font-semibold">{name}</p>
               </div>
             ))}
@@ -248,6 +272,7 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Potential Match</p>
+
                 <h3 className="mt-1 text-xl font-bold">
                   BCA Programming Books
                 </h3>
@@ -262,20 +287,27 @@ export default function Home() {
               <div className="rounded-xl bg-gray-50 p-4">
                 ✓ Category matches
               </div>
+
               <div className="rounded-xl bg-gray-50 p-4">
                 ✓ Requirement is relevant
               </div>
+
               <div className="rounded-xl bg-gray-50 p-4">
                 ✓ Nearby locality
               </div>
+
               <div className="rounded-xl bg-gray-50 p-4">
                 ✓ Suitable condition
               </div>
             </div>
 
-            <button className="mt-6 w-full rounded-xl bg-[#c63868] py-3 font-semibold text-white">
+            {/* VIEW MATCH */}
+            <Link
+              href="/dashboard"
+              className="mt-6 block w-full rounded-xl bg-[#c63868] py-3 text-center font-semibold text-white transition hover:bg-[#a92e57]"
+            >
               View Match
-            </button>
+            </Link>
           </div>
         </div>
       </section>
@@ -306,6 +338,7 @@ export default function Home() {
                   <p className="text-3xl font-extrabold text-[#173d29]">
                     {number}
                   </p>
+
                   <p className="mt-2 text-sm text-gray-500">{label}</p>
                 </div>
               ))}
@@ -333,9 +366,13 @@ export default function Home() {
             Let's make reuse easier, more meaningful and more local.
           </p>
 
-          <button className="mt-8 rounded-xl bg-[#c63868] px-8 py-3.5 font-semibold text-white shadow-lg transition hover:bg-[#a92e57]">
+          {/* GET STARTED */}
+          <Link
+            href="/register"
+            className="mt-8 inline-block rounded-xl bg-[#c63868] px-8 py-3.5 font-semibold text-white shadow-lg transition hover:bg-[#a92e57]"
+          >
             Get Started
-          </button>
+          </Link>
         </div>
       </section>
 
