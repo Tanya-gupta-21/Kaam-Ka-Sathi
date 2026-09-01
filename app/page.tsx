@@ -1,16 +1,24 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
 export default function Home() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <main className="min-h-screen bg-[#faf9f5] text-[#193326]">
       {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b border-[#e7e4dc] bg-[#faf9f5]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+          {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
               src="/logo.png"
-              alt="Kaam Ka Sathi"
+              alt="Kaam Ka Saathi"
               width={58}
               height={58}
               className="h-14 w-14 object-contain"
@@ -18,14 +26,16 @@ export default function Home() {
 
             <div>
               <h1 className="text-xl font-bold text-[#173d29]">
-                Kaam Ka Sathi
+                Kaam Ka Saathi
               </h1>
+
               <p className="text-xs text-gray-500">
                 Giving useful things a second chance
               </p>
             </div>
           </div>
 
+          {/* Desktop Navbar */}
           <div className="hidden items-center gap-8 md:flex">
             <a
               href="#how"
@@ -48,7 +58,6 @@ export default function Home() {
               Our Impact
             </a>
 
-            {/* LOGIN */}
             <Link
               href="/login"
               className="rounded-xl border border-[#c63868] px-5 py-2 text-sm font-semibold text-[#c63868] transition hover:bg-[#c63868] hover:text-white"
@@ -57,11 +66,54 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Mobile Menu */}
-          <button className="rounded-xl border border-gray-300 px-3 py-2 md:hidden">
-            ☰
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Open menu"
+            className="rounded-xl border border-gray-300 px-3 py-2 text-xl md:hidden"
+          >
+            {menuOpen ? "✕" : "☰"}
           </button>
         </div>
+
+        {/* Mobile Menu */}
+        {menuOpen && (
+          <div className="border-t border-[#e7e4dc] bg-white px-6 py-5 shadow-lg md:hidden">
+            <div className="flex flex-col gap-2">
+              <a
+                href="#how"
+                onClick={closeMenu}
+                className="rounded-xl px-4 py-3 font-medium hover:bg-[#faf9f5]"
+              >
+                ⚙️ How It Works
+              </a>
+
+              <a
+                href="#categories"
+                onClick={closeMenu}
+                className="rounded-xl px-4 py-3 font-medium hover:bg-[#faf9f5]"
+              >
+                📦 Categories
+              </a>
+
+              <a
+                href="#impact"
+                onClick={closeMenu}
+                className="rounded-xl px-4 py-3 font-medium hover:bg-[#faf9f5]"
+              >
+                💚 Our Impact
+              </a>
+
+              <Link
+                href="/login"
+                onClick={closeMenu}
+                className="mt-2 rounded-xl bg-[#c63868] px-4 py-3 text-center font-semibold text-white"
+              >
+                🔐 Login
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero */}
@@ -85,9 +137,7 @@ export default function Home() {
               need.
             </p>
 
-            {/* HERO BUTTONS */}
             <div className="mt-8 flex flex-wrap gap-4">
-              {/* I HAVE SOMETHING */}
               <Link
                 href="/items/new"
                 className="rounded-xl bg-[#173d29] px-7 py-3.5 font-semibold text-white shadow-lg transition hover:bg-[#24573b]"
@@ -95,7 +145,6 @@ export default function Home() {
                 I Have Something
               </Link>
 
-              {/* I NEED SOMETHING */}
               <Link
                 href="/dashboard"
                 className="rounded-xl border border-[#173d29] bg-white px-7 py-3.5 font-semibold text-[#173d29] transition hover:bg-[#eef4ed]"
@@ -301,7 +350,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* VIEW MATCH */}
             <Link
               href="/dashboard"
               className="mt-6 block w-full rounded-xl bg-[#c63868] py-3 text-center font-semibold text-white transition hover:bg-[#a92e57]"
@@ -366,7 +414,6 @@ export default function Home() {
             Let's make reuse easier, more meaningful and more local.
           </p>
 
-          {/* GET STARTED */}
           <Link
             href="/register"
             className="mt-8 inline-block rounded-xl bg-[#c63868] px-8 py-3.5 font-semibold text-white shadow-lg transition hover:bg-[#a92e57]"
