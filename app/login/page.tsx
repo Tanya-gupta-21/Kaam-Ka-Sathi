@@ -1,3 +1,4 @@
+
 "use client";
 
 import { FormEvent, useState } from "react";
@@ -41,7 +42,6 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[#f7f8f4] flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-xl border border-gray-100">
-        
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#173d29] text-3xl shadow-lg">
             ♻️
@@ -63,7 +63,8 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 outline-none transition focus:border-[#173d29] focus:bg-white focus:ring-4 focus:ring-[#173d29]/10"
+            autoComplete="email"
+            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3.5 text-gray-900 placeholder:text-gray-500 outline-none transition focus:border-[#173d29] focus:ring-4 focus:ring-[#173d29]/10"
           />
 
           <input
@@ -72,7 +73,8 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 outline-none transition focus:border-[#173d29] focus:bg-white focus:ring-4 focus:ring-[#173d29]/10"
+            autoComplete="current-password"
+            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3.5 text-gray-900 placeholder:text-gray-500 outline-none transition focus:border-[#173d29] focus:ring-4 focus:ring-[#173d29]/10"
           />
 
           <div className="text-right">
