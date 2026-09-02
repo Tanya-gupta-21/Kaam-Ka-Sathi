@@ -14,7 +14,6 @@ export default function Home() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b border-[#e7e4dc] bg-[#faf9f5]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-          {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
               src="/logo.png"
@@ -66,7 +65,7 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Open menu"
@@ -76,7 +75,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {menuOpen && (
           <div className="border-t border-[#e7e4dc] bg-white px-6 py-5 shadow-lg md:hidden">
             <div className="flex flex-col gap-2">
@@ -145,8 +143,9 @@ export default function Home() {
                 I Have Something
               </Link>
 
+              {/* FIXED: I Need Something now opens available items */}
               <Link
-                href="/dashboard"
+                href="/items"
                 className="rounded-xl border border-[#173d29] bg-white px-7 py-3.5 font-semibold text-[#173d29] transition hover:bg-[#eef4ed]"
               >
                 I Need Something
@@ -164,7 +163,7 @@ export default function Home() {
               <div className="rounded-[2rem] bg-white p-6 shadow-xl shadow-gray-200">
                 <Image
                   src="/logo.png"
-                  alt="Kaam Ka Sathi Logo"
+                  alt="Kaam Ka Saathi Logo"
                   width={480}
                   height={480}
                   className="h-auto w-full max-w-md object-contain"
@@ -228,18 +227,18 @@ export default function Home() {
               },
               {
                 icon: "🙋",
-                title: "Post a Need",
-                text: "Tell the community what item you are looking for.",
+                title: "Find Something",
+                text: "Browse useful items shared by people in your community.",
               },
               {
                 icon: "🎯",
                 title: "Find a Match",
-                text: "Our system identifies items that may fulfill a need.",
+                text: "Discover items that may fulfill what you are looking for.",
               },
               {
                 icon: "♻️",
                 title: "Give It a New Life",
-                text: "Connect, exchange and mark the item as reused.",
+                text: "Connect with the owner and help an item find a new home.",
               },
             ].map((step, index) => (
               <div
@@ -292,7 +291,6 @@ export default function Home() {
                 className="rounded-2xl border border-[#ece9e1] bg-[#faf9f5] p-7 text-center transition hover:-translate-y-1 hover:shadow-md"
               >
                 <div className="text-4xl">{icon}</div>
-
                 <p className="mt-3 font-semibold">{name}</p>
               </div>
             ))}
@@ -311,7 +309,7 @@ export default function Home() {
             </h2>
 
             <p className="mt-5 leading-8 text-green-100">
-              Instead of making users search endlessly, Kaam Ka Sathi can
+              Instead of making users search endlessly, Kaam Ka Saathi can
               compare an available item with posted requirements and identify
               potential matches.
             </p>
@@ -351,10 +349,10 @@ export default function Home() {
             </div>
 
             <Link
-              href="/dashboard"
+              href="/items"
               className="mt-6 block w-full rounded-xl bg-[#c63868] py-3 text-center font-semibold text-white transition hover:bg-[#a92e57]"
             >
-              View Match
+              View Available Items
             </Link>
           </div>
         </div>
@@ -400,7 +398,7 @@ export default function Home() {
         <div className="mx-auto max-w-4xl px-6 text-center">
           <Image
             src="/logo.png"
-            alt="Kaam Ka Sathi"
+            alt="Kaam Ka Saathi"
             width={130}
             height={130}
             className="mx-auto"
