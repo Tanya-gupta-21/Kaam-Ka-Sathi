@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -35,6 +36,11 @@ export default function Navbar() {
       label: "Browse Items",
       icon: "📦",
       href: "/items",
+    },
+    {
+      label: "My Items",
+      icon: "📦",
+      href: "/dashboard/items",
     },
     {
       label: "Community Needs",
@@ -98,6 +104,7 @@ export default function Navbar() {
                 }`}
               >
                 <span className="mr-1.5">{link.icon}</span>
+
                 {link.label}
 
                 {isActive(link.href) && (
@@ -159,6 +166,7 @@ export default function Navbar() {
                   }`}
                 >
                   <span className="text-lg">{link.icon}</span>
+
                   {link.label}
 
                   {isActive(link.href) && (
@@ -168,6 +176,7 @@ export default function Navbar() {
               ))}
             </div>
 
+            {/* MOBILE ACTIONS */}
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button
                 onClick={() => router.push("/items/new")}
@@ -184,10 +193,11 @@ export default function Navbar() {
               </button>
             </div>
 
+            {/* MOBILE LOGOUT */}
             <button
               onClick={handleLogout}
               disabled={loggingOut}
-              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600 transition hover:border-[#c63868] hover:text-[#c63868]"
+              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600 transition hover:border-[#c63868] hover:text-[#c63868] disabled:opacity-50"
             >
               {loggingOut ? "Logging out..." : "Logout"}
             </button>
