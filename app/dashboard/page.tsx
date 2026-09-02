@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar.";
+import Navbar from "@/components/Navbar";
 
 type Need = {
   id: string;
