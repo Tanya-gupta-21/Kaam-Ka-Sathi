@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -30,7 +31,12 @@ const categories = [
     color: "bg-purple-50",
     text: "text-purple-600",
   },
-  { name: "Toys", icon: "🧸", color: "bg-yellow-50", text: "text-yellow-600" },
+  {
+    name: "Toys",
+    icon: "🧸",
+    color: "bg-yellow-50",
+    text: "text-yellow-600",
+  },
   {
     name: "Household",
     icon: "🏠",
@@ -65,7 +71,7 @@ const exampleItems = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = createClient();
 
   const [userName, setUserName] = useState("User");
   const [loading, setLoading] = useState(true);
@@ -74,66 +80,103 @@ export default function DashboardPage() {
   const [communityNeeds, setCommunityNeeds] = useState<Need[]>([]);
 
   useEffect(() => {
+    let mounted = true;
+
     async function loadDashboard() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
-        return;
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+
+        // =========================
+        // PROFILE
+        // =========================
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        if (profile?.full_name) {
+          setUserName(profile.full_name);
+        } else if (user.user_metadata?.full_name) {
+          setUserName(user.user_metadata.full_name);
+        }
+
+        // =========================
+        // MY NEEDS
+        // =========================
+
+        const { data: myNeeds, count } = await supabase
+          .from("needs")
+          .select("id", { count: "exact" })
+          .eq("user_id", user.id);
+
+        if (!mounted) return;
+
+        setNeedCount(count || 0);
+
+        // =========================
+        // INTERESTS ON MY NEEDS
+        // =========================
+
+        if (myNeeds && myNeeds.length > 0) {
+          const ids = myNeeds.map((item) => item.id);
+
+          const { count: interests } = await supabase
+            .from("need_interests")
+            .select("*", {
+              count: "exact",
+              head: true,
+            })
+            .in("need_id", ids);
+
+          if (!mounted) return;
+
+          setInterestCount(interests || 0);
+        } else {
+          setInterestCount(0);
+        }
+
+        // =========================
+        // COMMUNITY NEEDS
+        // =========================
+
+        const { data: needs } = await supabase
+          .from("needs")
+          .select(
+            "id, title, description, category, city, locality, created_at"
+          )
+          .neq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(6);
+
+        if (!mounted) return;
+
+        setCommunityNeeds(needs || []);
+      } catch (error) {
+        console.error("Dashboard loading error:", error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-
-      // PROFILE
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.full_name) {
-        setUserName(profile.full_name);
-      } else if (user.user_metadata?.full_name) {
-        setUserName(user.user_metadata.full_name);
-      }
-
-      // MY NEEDS
-      const { data: myNeeds, count } = await supabase
-        .from("needs")
-        .select("id", { count: "exact" })
-        .eq("user_id", user.id);
-
-      setNeedCount(count || 0);
-
-      // INTERESTS ON MY NEEDS
-      if (myNeeds && myNeeds.length > 0) {
-        const ids = myNeeds.map((item) => item.id);
-
-        const { count: interests } = await supabase
-          .from("need_interests")
-          .select("*", { count: "exact", head: true })
-          .in("need_id", ids);
-
-        setInterestCount(interests || 0);
-      }
-
-      // COMMUNITY NEEDS
-      const { data: needs } = await supabase
-        .from("needs")
-        .select(
-          "id, title, description, category, city, locality, created_at"
-        )
-        .neq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(6);
-
-      setCommunityNeeds(needs || []);
-
-      setLoading(false);
     }
 
     loadDashboard();
-  }, [router, supabase]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
 
   function formatDate(date: string) {
     const d = new Date(date);
@@ -143,6 +186,10 @@ export default function DashboardPage() {
       month: "short",
     });
   }
+
+  // =========================
+  // LOADING
+  // =========================
 
   if (loading) {
     return (
@@ -178,6 +225,7 @@ export default function DashboardPage() {
         <section className="mx-auto max-w-7xl px-5 pb-10 pt-7 md:px-8 md:pt-10">
           <div className="relative overflow-hidden rounded-[2.5rem] bg-[#173d29] shadow-2xl">
             {/* Decorative shapes */}
+
             <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border-[50px] border-white/5" />
 
             <div className="absolute -bottom-40 right-32 h-96 w-96 rounded-full bg-[#c63868]/20 blur-3xl" />
@@ -185,6 +233,8 @@ export default function DashboardPage() {
             <div className="absolute left-1/2 top-10 h-40 w-40 rounded-full bg-green-300/10 blur-3xl" />
 
             <div className="relative grid gap-10 p-7 md:grid-cols-[1fr_340px] md:p-12 lg:p-14">
+              {/* HERO TEXT */}
+
               <div className="flex flex-col justify-center">
                 <div className="mb-5 flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-green-100 backdrop-blur">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-green-300" />
@@ -198,9 +248,7 @@ export default function DashboardPage() {
 
                 <h2 className="mt-3 max-w-2xl text-4xl font-black tracking-tight text-white md:text-6xl">
                   Hello,{" "}
-                  <span className="text-[#f4b6c9]">
-                    {userName}!
-                  </span>
+                  <span className="text-[#f4b6c9]">{userName}!</span>
                 </h2>
 
                 <p className="mt-5 max-w-xl text-base leading-7 text-green-100 md:text-lg">
@@ -226,6 +274,7 @@ export default function DashboardPage() {
               </div>
 
               {/* IMPACT CARD */}
+
               <div className="relative">
                 <div className="absolute inset-0 rotate-3 rounded-[2rem] bg-white/5" />
 
@@ -346,6 +395,7 @@ export default function DashboardPage() {
 
           <div className="grid gap-5 md:grid-cols-3">
             {/* CARD 1 */}
+
             <button
               onClick={() => router.push("/items/new")}
               className="group relative min-h-[300px] overflow-hidden rounded-[2rem] bg-[#173d29] p-8 text-left text-white shadow-xl transition duration-500 hover:-translate-y-2 hover:shadow-2xl"
@@ -381,6 +431,7 @@ export default function DashboardPage() {
             </button>
 
             {/* CARD 2 */}
+
             <button
               onClick={() => router.push("/needs/new")}
               className="group relative min-h-[300px] overflow-hidden rounded-[2rem] bg-[#c63868] p-8 text-left text-white shadow-xl transition duration-500 hover:-translate-y-2 hover:shadow-2xl"
@@ -416,6 +467,7 @@ export default function DashboardPage() {
             </button>
 
             {/* CARD 3 */}
+
             <button
               onClick={() => router.push("/items")}
               className="group relative min-h-[300px] overflow-hidden rounded-[2rem] bg-[#f1eee6] p-8 text-left shadow-xl transition duration-500 hover:-translate-y-2 hover:bg-white hover:shadow-2xl"
@@ -579,9 +631,7 @@ export default function DashboardPage() {
                     </span>
                   </div>
 
-                  <h4 className="mt-5 text-xl font-black">
-                    {need.title}
-                  </h4>
+                  <h4 className="mt-5 text-xl font-black">{need.title}</h4>
 
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-500">
                     {need.description ||
@@ -666,9 +716,7 @@ export default function DashboardPage() {
                     {category.name}
                   </p>
 
-                  <p className="mt-1 text-xs text-gray-400">
-                    Explore →
-                  </p>
+                  <p className="mt-1 text-xs text-gray-400">Explore →</p>
                 </button>
               ))}
             </div>
@@ -734,9 +782,7 @@ export default function DashboardPage() {
 
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-lg font-black">
-                        {step.title}
-                      </h4>
+                      <h4 className="text-lg font-black">{step.title}</h4>
 
                       <span className="text-sm font-black text-gray-300">
                         {step.number}
@@ -783,25 +829,19 @@ export default function DashboardPage() {
                 <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur">
                   <div className="text-3xl">♻️</div>
 
-                  <p className="mt-3 text-sm font-bold">
-                    Reuse
-                  </p>
+                  <p className="mt-3 text-sm font-bold">Reuse</p>
                 </div>
 
                 <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur">
                   <div className="text-3xl">🤝</div>
 
-                  <p className="mt-3 text-sm font-bold">
-                    Connect
-                  </p>
+                  <p className="mt-3 text-sm font-bold">Connect</p>
                 </div>
 
                 <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur">
                   <div className="text-3xl">🌱</div>
 
-                  <p className="mt-3 text-sm font-bold">
-                    Impact
-                  </p>
+                  <p className="mt-3 text-sm font-bold">Impact</p>
                 </div>
               </div>
             </div>
@@ -854,13 +894,14 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {/* ========================================================= */}
         {/* FOOTER */}
+        {/* ========================================================= */}
+
         <footer className="border-t border-black/5 bg-white">
           <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-5 py-7 text-sm md:flex-row md:items-center md:px-8">
             <div>
-              <p className="font-black text-[#173d29]">
-                ♻️ Kaam Ka Saathi
-              </p>
+              <p className="font-black text-[#173d29]">♻️ Kaam Ka Saathi</p>
 
               <p className="mt-1 text-gray-400">
                 Share • Help • Reuse • Connect
@@ -895,3 +936,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
