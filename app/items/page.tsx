@@ -36,10 +36,19 @@ export default function ItemsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const [interestedItems, setInterestedItems] = useState<
     (string | number)[]
   >([]);
+
   const [interestLoading, setInterestLoading] = useState<
+    string | number | null
+  >(null);
+
+  const [deleteLoading, setDeleteLoading] = useState<
     string | number | null
   >(null);
 
@@ -57,6 +66,22 @@ export default function ItemsPage() {
         return;
       }
 
+      setCurrentUserId(user.id);
+
+      // Check user's role
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error("Profile loading error:", profileError);
+      }
+
+      setIsAdmin(profile?.role === "admin");
+
+      // Load items
       const { data, error } = await supabase
         .from("items")
         .select("*")
@@ -71,6 +96,7 @@ export default function ItemsPage() {
 
       setItems(data || []);
 
+      // Load interests
       const { data: interests, error: interestError } = await supabase
         .from("interests")
         .select("item_id")
@@ -136,6 +162,58 @@ export default function ItemsPage() {
     );
 
     setInterestLoading(null);
+  }
+
+  async function handleDelete(item: Item) {
+    if (!currentUserId) {
+      router.push("/login");
+      return;
+    }
+
+    const isOwner = item.owner_id === currentUserId;
+
+    if (!isOwner && !isAdmin) {
+      setMessage("You are not allowed to delete this item.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${item.title}"?\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setDeleteLoading(item.id);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("items")
+      .delete()
+      .eq("id", item.id);
+
+    if (error) {
+      console.error("Delete item error:", error);
+
+      setMessage(
+        error.message ||
+          "Unable to delete this item. Please try again."
+      );
+
+      setDeleteLoading(null);
+      return;
+    }
+
+    // Remove deleted item from UI immediately
+    setItems((prev) => prev.filter((existing) => existing.id !== item.id));
+
+    // Remove it from interested items state too
+    setInterestedItems((prev) =>
+      prev.filter((id) => id !== item.id)
+    );
+
+    setMessage(`"${item.title}" has been deleted successfully. 🗑️`);
+
+    setDeleteLoading(null);
   }
 
   function getCategoryIcon(category: string) {
@@ -205,7 +283,6 @@ export default function ItemsPage() {
 
       {/* HERO */}
       <section className="relative overflow-hidden">
-        {/* Decorative circles */}
         <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#f2dce4] opacity-60 blur-3xl" />
         <div className="pointer-events-none absolute -left-24 top-32 h-72 w-72 rounded-full bg-[#dcebdc] opacity-70 blur-3xl" />
 
@@ -220,7 +297,9 @@ export default function ItemsPage() {
               <h2 className="max-w-4xl text-4xl font-black leading-[1.05] tracking-tight text-[#173d29] md:text-6xl">
                 Find something useful.
                 <br />
-                <span className="text-[#c63868]">Give it a new home.</span>
+                <span className="text-[#c63868]">
+                  Give it a new home.
+                </span>
               </h2>
 
               <p className="mt-6 max-w-2xl text-base leading-7 text-gray-600 md:text-lg">
@@ -246,7 +325,7 @@ export default function ItemsPage() {
               </div>
             </div>
 
-            {/* Hero side card */}
+            {/* HERO SIDE CARD */}
             <div className="relative hidden lg:block">
               <div className="rotate-2 rounded-[2.5rem] border border-white bg-white p-5 shadow-2xl">
                 <div className="rounded-[2rem] bg-[#173d29] p-7 text-white">
@@ -266,7 +345,9 @@ export default function ItemsPage() {
 
                   <div className="mt-8 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                      <p className="text-2xl font-black">{items.length}</p>
+                      <p className="text-2xl font-black">
+                        {items.length}
+                      </p>
                       <p className="mt-1 text-xs text-[#cfe2d1]">
                         Items listed
                       </p>
@@ -464,7 +545,11 @@ export default function ItemsPage() {
             <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
               {filteredItems.map((item, index) => {
                 const isInterested = interestedItems.includes(item.id);
-                const isLoading = interestLoading === item.id;
+                const isInterestLoading = interestLoading === item.id;
+                const isDeleteLoading = deleteLoading === item.id;
+
+                const isOwner = item.owner_id === currentUserId;
+                const canDelete = isOwner || isAdmin;
 
                 return (
                   <article
@@ -494,7 +579,6 @@ export default function ItemsPage() {
                         </div>
                       )}
 
-                      {/* Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-[#173d29]/35 via-transparent to-transparent opacity-60" />
 
                       {/* Category */}
@@ -506,6 +590,15 @@ export default function ItemsPage() {
                       <span className="absolute right-4 top-4 rounded-full bg-white/95 px-3.5 py-2 text-xs font-black text-[#356b45] shadow-lg">
                         {item.condition}
                       </span>
+
+                      {/* Owner/Admin badge */}
+                      {canDelete && (
+                        <span className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1.5 text-xs font-black text-[#173d29] shadow-lg backdrop-blur">
+                          {isAdmin && !isOwner
+                            ? "🛡️ Admin"
+                            : "👤 Your Item"}
+                        </span>
+                      )}
                     </div>
 
                     {/* CONTENT */}
@@ -543,34 +636,62 @@ export default function ItemsPage() {
 
                       {/* Date */}
                       <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
-                        <span>🕒 {formatDate(item.created_at)}</span>
+                        <span>
+                          🕒 {formatDate(item.created_at)}
+                        </span>
 
                         <span className="font-semibold text-[#356b45]">
                           Community Share
                         </span>
                       </div>
 
-                      {/* Interest */}
-                      <button
-                        onClick={() => handleInterest(item)}
-                        disabled={isLoading || isInterested}
-                        className={`mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-black transition duration-300 ${
-                          isInterested
-                            ? "cursor-default bg-[#e9f1e5] text-[#356b45]"
-                            : "bg-[#173d29] text-white shadow-md hover:-translate-y-0.5 hover:bg-[#24573b] hover:shadow-lg"
-                        }`}
-                      >
-                        {isLoading ? (
-                          <>
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                            Sending...
-                          </>
-                        ) : isInterested ? (
-                          <>✓ Interest Sent</>
-                        ) : (
-                          <>❤️ I'm Interested</>
-                        )}
-                      </button>
+                      {/* INTEREST */}
+                      {!isOwner && (
+                        <button
+                          onClick={() => handleInterest(item)}
+                          disabled={
+                            isInterestLoading || isInterested
+                          }
+                          className={`mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-black transition duration-300 ${
+                            isInterested
+                              ? "cursor-default bg-[#e9f1e5] text-[#356b45]"
+                              : "bg-[#173d29] text-white shadow-md hover:-translate-y-0.5 hover:bg-[#24573b] hover:shadow-lg"
+                          }`}
+                        >
+                          {isInterestLoading ? (
+                            <>
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                              Sending...
+                            </>
+                          ) : isInterested ? (
+                            <>✓ Interest Sent</>
+                          ) : (
+                            <>❤️ I'm Interested</>
+                          )}
+                        </button>
+                      )}
+
+                      {/* OWNER / ADMIN DELETE */}
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(item)}
+                          disabled={isDeleteLoading}
+                          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border py-3 font-black transition duration-300 ${
+                            isDeleteLoading
+                              ? "cursor-not-allowed border-red-100 bg-red-50 text-red-300"
+                              : "border-red-200 bg-white text-red-600 hover:-translate-y-0.5 hover:bg-red-50 hover:shadow-md"
+                          }`}
+                        >
+                          {isDeleteLoading ? (
+                            <>
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-t-red-500" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>🗑️ Delete Item</>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </article>
                 );
@@ -619,7 +740,9 @@ export default function ItemsPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-7 text-sm text-gray-500 md:flex-row md:items-center md:justify-between md:px-8">
           <p>
             © {new Date().getFullYear()}{" "}
-            <span className="font-bold text-[#173d29]">Kaam Ka Saathi</span>
+            <span className="font-bold text-[#173d29]">
+              Kaam Ka Saathi
+            </span>
           </p>
 
           <p>♻️ Share more. Waste less. Help each other.</p>
