@@ -27,7 +27,6 @@ export default function RegisterPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/login`,
         data: {
           full_name: fullName,
           city: city,
@@ -43,25 +42,21 @@ export default function RegisterPage() {
       return;
     }
 
-    setMessage(
-      "Registration successful! Please check your email and confirm your account."
-    );
+    setMessage("Registration successful! You can now login. 🎉");
 
     setLoading(false);
 
     setTimeout(() => {
       router.push("/login");
-    }, 2000);
+    }, 1500);
   }
 
   return (
     <main className="min-h-screen bg-[#f7f8f4] flex items-center justify-center p-6">
-
       <div className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-xl border border-gray-100">
 
         {/* Logo / Heading */}
         <div className="text-center">
-
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#173d29] text-3xl shadow-lg">
             ♻️
           </div>
