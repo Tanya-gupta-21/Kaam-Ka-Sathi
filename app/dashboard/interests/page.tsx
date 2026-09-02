@@ -1,8 +1,17 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+
+type Profile = {
+  id: string;
+  full_name: string | null;
+  city: string | null;
+  locality: string | null;
+  avatar_url: string | null;
+};
 
 type Interest = {
   id: number;
@@ -18,6 +27,7 @@ type Interest = {
     category: string;
     condition: string;
   } | null;
+  profile: Profile | null;
 };
 
 export default function InterestsPage() {
@@ -27,6 +37,7 @@ export default function InterestsPage() {
   const [interests, setInterests] = useState<Interest[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [chatLoading, setChatLoading] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadInterests() {
@@ -91,15 +102,47 @@ export default function InterestsPage() {
         return;
       }
 
-      const formattedData: Interest[] = (data || []).map(
+      const rawInterests = (data || []).map((interest: any) => ({
+        id: interest.id,
+        item_id: interest.item_id,
+        interested_user_id: interest.interested_user_id,
+        created_at: interest.created_at,
+        item: Array.isArray(interest.items)
+          ? interest.items[0] || null
+          : interest.items || null,
+      }));
+
+      // Get all interested user IDs
+      const userIds = [
+        ...new Set(
+          rawInterests.map(
+            (interest: any) => interest.interested_user_id
+          )
+        ),
+      ];
+
+      let profiles: Profile[] = [];
+
+      if (userIds.length > 0) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, full_name, city, locality, avatar_url")
+          .in("id", userIds);
+
+        if (profileError) {
+          console.error("Profile loading error:", profileError);
+        } else {
+          profiles = profileData || [];
+        }
+      }
+
+      const formattedData: Interest[] = rawInterests.map(
         (interest: any) => ({
-          id: interest.id,
-          item_id: interest.item_id,
-          interested_user_id: interest.interested_user_id,
-          created_at: interest.created_at,
-          item: Array.isArray(interest.items)
-            ? interest.items[0] || null
-            : interest.items || null,
+          ...interest,
+          profile:
+            profiles.find(
+              (profile) => profile.id === interest.interested_user_id
+            ) || null,
         })
       );
 
@@ -108,7 +151,7 @@ export default function InterestsPage() {
     }
 
     loadInterests();
-  }, [router, supabase]);
+  }, [router]);
 
   function formatDate(date: string) {
     return new Date(date).toLocaleString("en-IN", {
@@ -118,6 +161,70 @@ export default function InterestsPage() {
       hour: "numeric",
       minute: "2-digit",
     });
+  }
+
+  async function handleChat(interest: Interest) {
+    if (!interest.item) {
+      setMessage("This item is no longer available.");
+      return;
+    }
+
+    setChatLoading(interest.id);
+    setMessage("");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const ownerId = user.id;
+    const interestedUserId = interest.interested_user_id;
+
+    // Check whether conversation already exists
+    const { data: existingConversation, error: existingError } =
+      await supabase
+        .from("conversations")
+        .select("id")
+        .eq("item_id", interest.item_id)
+        .eq("interested_user_id", interestedUserId)
+        .maybeSingle();
+
+    if (existingError) {
+      console.error(existingError);
+      setMessage(existingError.message);
+      setChatLoading(null);
+      return;
+    }
+
+    if (existingConversation) {
+      router.push(`/chat/${existingConversation.id}`);
+      return;
+    }
+
+    // Create a new conversation
+    const { data: newConversation, error: createError } =
+      await supabase
+        .from("conversations")
+        .insert({
+          item_id: interest.item_id,
+          owner_id: ownerId,
+          interested_user_id: interestedUserId,
+        })
+        .select("id")
+        .single();
+
+    if (createError) {
+      console.error(createError);
+      setMessage(createError.message);
+      setChatLoading(null);
+      return;
+    }
+
+    router.push(`/chat/${newConversation.id}`);
   }
 
   return (
@@ -170,18 +277,18 @@ export default function InterestsPage() {
           <div className="relative flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/80 backdrop-blur">
-                <span>🔔</span>
-                Owner Notifications
+                <span>💬</span>
+                Community Connections
               </div>
 
               <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
-                Someone is interested
+                People who are interested
                 <span className="ml-2">❤️</span>
               </h1>
 
               <p className="mt-4 max-w-xl text-base leading-7 text-white/70 sm:text-lg">
-                See the people who discovered something useful in the items
-                you shared with the community.
+                Someone found your shared item useful. See their basic
+                profile details and start a conversation.
               </p>
             </div>
 
@@ -195,16 +302,14 @@ export default function InterestsPage() {
         {!loading && !message && interests.length > 0 && (
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                    Total Interests
-                  </p>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                Total Interests
+              </p>
 
-                  <p className="mt-2 text-3xl font-black text-[#173d29]">
-                    {interests.length}
-                  </p>
-                </div>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-3xl font-black text-[#173d29]">
+                  {interests.length}
+                </p>
 
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f8e4eb] text-2xl">
                   ❤️
@@ -213,16 +318,14 @@ export default function InterestsPage() {
             </div>
 
             <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                    Items Getting Attention
-                  </p>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                Items Getting Attention
+              </p>
 
-                  <p className="mt-2 text-3xl font-black text-[#173d29]">
-                    {new Set(interests.map((item) => item.item_id)).size}
-                  </p>
-                </div>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-3xl font-black text-[#173d29]">
+                  {new Set(interests.map((item) => item.item_id)).size}
+                </p>
 
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e9f1e5] text-2xl">
                   📦
@@ -231,16 +334,14 @@ export default function InterestsPage() {
             </div>
 
             <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                    Community Impact
-                  </p>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                Community Impact
+              </p>
 
-                  <p className="mt-2 text-3xl font-black text-[#173d29]">
-                    🌱
-                  </p>
-                </div>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-3xl font-black text-[#173d29]">
+                  🌱
+                </p>
 
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f1eee6] text-2xl">
                   ♻️
@@ -308,7 +409,7 @@ export default function InterestsPage() {
 
             <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-gray-500">
               When someone shows interest in an item you've listed, you'll
-              see their interest right here.
+              see their profile and chat option right here.
             </p>
 
             <div className="mx-auto mt-7 max-w-md rounded-2xl bg-[#f4f8f1] p-4 text-left">
@@ -354,122 +455,170 @@ export default function InterestsPage() {
             </div>
 
             <div className="space-y-6">
-              {interests.map((interest) => (
-                <article
-                  key={interest.id}
-                  className="group overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-md transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
-                >
-                  <div className="grid md:grid-cols-[280px_1fr]">
-                    {/* Image */}
-                    <div className="relative h-64 overflow-hidden bg-[#f1eee6] md:h-full md:min-h-[360px]">
-                      {interest.item?.image_url ? (
-                        <img
-                          src={interest.item.image_url}
-                          alt={interest.item.title}
-                          className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full min-h-[260px] items-center justify-center text-7xl">
-                          📦
-                        </div>
-                      )}
+              {interests.map((interest) => {
+                const profile = interest.profile;
 
-                      <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-xs font-black text-[#173d29] shadow-md backdrop-blur">
-                        ❤️ Interested
-                      </div>
-                    </div>
+                const personName =
+                  profile?.full_name?.trim() || "Community Member";
 
-                    {/* Content */}
-                    <div className="p-6 sm:p-8">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-xs font-black uppercase tracking-widest text-[#c63868]">
-                            Someone wants this
-                          </p>
+                return (
+                  <article
+                    key={interest.id}
+                    className="group overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-md transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                  >
+                    <div className="grid md:grid-cols-[280px_1fr]">
+                      {/* Image */}
+                      <div className="relative h-64 overflow-hidden bg-[#f1eee6] md:h-full md:min-h-[390px]">
+                        {interest.item?.image_url ? (
+                          <img
+                            src={interest.item.image_url}
+                            alt={interest.item.title}
+                            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full min-h-[260px] items-center justify-center text-7xl">
+                            📦
+                          </div>
+                        )}
 
-                          <h3 className="mt-2 text-2xl font-black tracking-tight text-[#173d29]">
-                            {interest.item?.title || "Item"}
-                          </h3>
-                        </div>
-
-                        <div className="hidden shrink-0 rounded-full bg-[#e9f1e5] px-4 py-2 text-xs font-black text-[#356b45] sm:block">
-                          #{interest.item_id}
+                        <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-xs font-black text-[#173d29] shadow-md backdrop-blur">
+                          ❤️ Interested
                         </div>
                       </div>
 
-                      {/* Item tags */}
-                      {interest.item && (
-                        <>
-                          <div className="mt-5 flex flex-wrap gap-2">
-                            <span className="rounded-full bg-[#f1eee6] px-3 py-1.5 text-xs font-bold text-gray-600">
-                              🏷️ {interest.item.category}
-                            </span>
-
-                            <span className="rounded-full bg-[#e9f1e5] px-3 py-1.5 text-xs font-bold text-[#356b45]">
-                              ✨ {interest.item.condition}
-                            </span>
-                          </div>
-
-                          <div className="mt-5 rounded-2xl bg-[#faf9f5] p-4">
-                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                              Available at
-                            </p>
-
-                            <p className="mt-1 text-sm font-black text-[#173d29]">
-                              📍 {interest.item.locality},{" "}
-                              {interest.item.city}
-                            </p>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Interested person */}
-                      <div className="mt-6 rounded-2xl border border-[#eeeae1] bg-white p-5">
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f8e4eb] text-xl">
-                            👤
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="text-sm font-black text-[#173d29]">
-                              Interested User
-                            </p>
-
-                            <p className="mt-2 break-all text-xs leading-5 text-gray-500">
-                              {interest.interested_user_id}
-                            </p>
-
-                            <p className="mt-2 text-[11px] font-medium text-gray-400">
-                              Interested on {formatDate(interest.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Next step */}
-                      <div className="mt-5 rounded-2xl bg-[#173d29] p-5 text-white">
-                        <div className="flex gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg">
-                            🤝
-                          </div>
-
+                      {/* Content */}
+                      <div className="p-6 sm:p-8">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div>
-                            <p className="text-sm font-black">
-                              A connection could start here
+                            <p className="text-xs font-black uppercase tracking-widest text-[#c63868]">
+                              Someone wants this
                             </p>
 
-                            <p className="mt-1 text-xs leading-5 text-white/60">
-                              This person has shown interest in your item. A
-                              safe contact or connect feature can be added
-                              here in the future.
-                            </p>
+                            <h3 className="mt-2 text-2xl font-black tracking-tight text-[#173d29]">
+                              {interest.item?.title || "Item"}
+                            </h3>
+                          </div>
+
+                          <div className="hidden shrink-0 rounded-full bg-[#e9f1e5] px-4 py-2 text-xs font-black text-[#356b45] sm:block">
+                            #{interest.item_id}
+                          </div>
+                        </div>
+
+                        {/* Item tags */}
+                        {interest.item && (
+                          <>
+                            <div className="mt-5 flex flex-wrap gap-2">
+                              <span className="rounded-full bg-[#f1eee6] px-3 py-1.5 text-xs font-bold text-gray-600">
+                                🏷️ {interest.item.category}
+                              </span>
+
+                              <span className="rounded-full bg-[#e9f1e5] px-3 py-1.5 text-xs font-bold text-[#356b45]">
+                                ✨ {interest.item.condition}
+                              </span>
+                            </div>
+
+                            <div className="mt-5 rounded-2xl bg-[#faf9f5] p-4">
+                              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                                Item location
+                              </p>
+
+                              <p className="mt-1 text-sm font-black text-[#173d29]">
+                                📍 {interest.item.locality},{" "}
+                                {interest.item.city}
+                              </p>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Interested Person */}
+                        <div className="mt-6 rounded-[1.5rem] border border-[#eadfe3] bg-gradient-to-br from-[#fffafd] to-[#f8f5ef] p-5">
+                          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-4">
+                              {/* Avatar */}
+                              {profile?.avatar_url ? (
+                                <img
+                                  src={profile.avatar_url}
+                                  alt={personName}
+                                  className="h-14 w-14 rounded-2xl object-cover shadow-sm"
+                                />
+                              ) : (
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#173d29] text-xl text-white shadow-sm">
+                                  {personName.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-black uppercase tracking-widest text-[#c63868]">
+                                  Interested Person
+                                </p>
+
+                                <h4 className="mt-1 truncate text-lg font-black text-[#173d29]">
+                                  {personName}
+                                </h4>
+
+                                {(profile?.city || profile?.locality) && (
+                                  <p className="mt-1 text-xs font-medium text-gray-500">
+                                    📍{" "}
+                                    {[profile.locality, profile.city]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </p>
+                                )}
+
+                                <p className="mt-1 text-[11px] text-gray-400">
+                                  Interested on{" "}
+                                  {formatDate(interest.created_at)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Chat button */}
+                            <button
+                              onClick={() => handleChat(interest)}
+                              disabled={chatLoading === interest.id}
+                              className="group/chat flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#173d29] px-5 py-3.5 text-sm font-black text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#24573b] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {chatLoading === interest.id ? (
+                                <>
+                                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                  Opening...
+                                </>
+                              ) : (
+                                <>
+                                  💬 Chat with {personName.split(" ")[0]}
+                                  <span className="transition group-hover/chat:translate-x-1">
+                                    →
+                                  </span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Connection info */}
+                        <div className="mt-5 rounded-2xl bg-[#173d29] p-5 text-white">
+                          <div className="flex gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg">
+                              💬
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-black">
+                                Ready to connect?
+                              </p>
+
+                              <p className="mt-1 text-xs leading-5 text-white/60">
+                                Start a conversation to discuss the item,
+                                availability and a suitable handover plan.
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           </section>
         )}
@@ -517,3 +666,4 @@ export default function InterestsPage() {
     </main>
   );
 }
+

@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -29,7 +30,7 @@ const categories = [
 ];
 
 export default function ItemsPage() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = createClient();
   const router = useRouter();
 
   const [items, setItems] = useState<Item[]>([]);
@@ -44,7 +45,15 @@ export default function ItemsPage() {
     (string | number)[]
   >([]);
 
+  const [conversationIds, setConversationIds] = useState<
+    Record<string, number>
+  >({});
+
   const [interestLoading, setInterestLoading] = useState<
+    string | number | null
+  >(null);
+
+  const [chatLoading, setChatLoading] = useState<
     string | number | null
   >(null);
 
@@ -96,7 +105,7 @@ export default function ItemsPage() {
 
       setItems(data || []);
 
-      // Load interests
+      // Load user's interests
       const { data: interests, error: interestError } = await supabase
         .from("interests")
         .select("item_id")
@@ -106,11 +115,36 @@ export default function ItemsPage() {
         setInterestedItems(interests.map((item) => item.item_id));
       }
 
+      // Load existing conversations for this user
+      const { data: conversations, error: conversationError } =
+        await supabase
+          .from("conversations")
+          .select("id, item_id")
+          .eq("interested_user_id", user.id);
+
+      if (conversationError) {
+        console.error(
+          "Conversation loading error:",
+          conversationError
+        );
+      }
+
+      if (conversations) {
+        const conversationMap: Record<string, number> = {};
+
+        conversations.forEach((conversation) => {
+          conversationMap[String(conversation.item_id)] =
+            conversation.id;
+        });
+
+        setConversationIds(conversationMap);
+      }
+
       setLoading(false);
     }
 
     loadItems();
-  }, [router, supabase]);
+  }, [router]);
 
   async function handleInterest(item: Item) {
     setInterestLoading(item.id);
@@ -131,12 +165,14 @@ export default function ItemsPage() {
       return;
     }
 
+    // Already interested
     if (interestedItems.includes(item.id)) {
       setMessage("You have already shown interest in this item. ❤️");
       setInterestLoading(null);
       return;
     }
 
+    // Create interest
     const { error } = await supabase.from("interests").insert({
       item_id: item.id,
       interested_user_id: user.id,
@@ -146,6 +182,10 @@ export default function ItemsPage() {
       console.error("Interest error:", error);
 
       if (error.code === "23505") {
+        setInterestedItems((prev) =>
+          prev.includes(item.id) ? prev : [...prev, item.id]
+        );
+
         setMessage("You have already shown interest in this item. ❤️");
       } else {
         setMessage(error.message);
@@ -157,11 +197,170 @@ export default function ItemsPage() {
 
     setInterestedItems((prev) => [...prev, item.id]);
 
+    /*
+      Create a conversation automatically.
+
+      The owner will be able to see this conversation
+      from Who's Interested.
+    */
+    if (item.owner_id) {
+      const { data: conversation, error: conversationError } =
+        await supabase
+          .from("conversations")
+          .insert({
+            item_id: item.id,
+            owner_id: item.owner_id,
+            interested_user_id: user.id,
+          })
+          .select("id")
+          .single();
+
+      if (conversationError) {
+        // If conversation already exists, try to fetch it.
+        if (conversationError.code === "23505") {
+          const { data: existingConversation } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("item_id", item.id)
+            .eq("interested_user_id", user.id)
+            .maybeSingle();
+
+          if (existingConversation) {
+            setConversationIds((prev) => ({
+              ...prev,
+              [String(item.id)]: existingConversation.id,
+            }));
+          }
+        } else {
+          console.error(
+            "Conversation creation error:",
+            conversationError
+          );
+        }
+      } else if (conversation) {
+        setConversationIds((prev) => ({
+          ...prev,
+          [String(item.id)]: conversation.id,
+        }));
+      }
+    }
+
     setMessage(
-      "Interest sent successfully! The owner will know that you need this item. ❤️"
+      "Interest sent successfully! ❤️ You can now message the owner."
     );
 
     setInterestLoading(null);
+  }
+
+  async function handleChat(item: Item) {
+    setChatLoading(item.id);
+    setMessage("");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    if (!item.owner_id) {
+      setMessage("Owner information is not available.");
+      setChatLoading(null);
+      return;
+    }
+
+    // If conversation already exists, open it.
+    const existingConversationId =
+      conversationIds[String(item.id)];
+
+    if (existingConversationId) {
+      router.push(`/chat/${existingConversationId}`);
+      return;
+    }
+
+    // Safety check: make sure interest exists.
+    const { data: existingInterest, error: interestError } =
+      await supabase
+        .from("interests")
+        .select("id")
+        .eq("item_id", item.id)
+        .eq("interested_user_id", user.id)
+        .maybeSingle();
+
+    if (interestError) {
+      console.error("Interest check error:", interestError);
+      setMessage(interestError.message);
+      setChatLoading(null);
+      return;
+    }
+
+    if (!existingInterest) {
+      setMessage(
+        "Please show interest in this item before starting a chat."
+      );
+      setChatLoading(null);
+      return;
+    }
+
+    // Create conversation if it doesn't exist.
+    const { data: conversation, error: conversationError } =
+      await supabase
+        .from("conversations")
+        .insert({
+          item_id: item.id,
+          owner_id: item.owner_id,
+          interested_user_id: user.id,
+        })
+        .select("id")
+        .single();
+
+    if (conversationError) {
+      if (conversationError.code === "23505") {
+        const { data: existingConversation } = await supabase
+          .from("conversations")
+          .select("id")
+          .eq("item_id", item.id)
+          .eq("interested_user_id", user.id)
+          .maybeSingle();
+
+        if (existingConversation) {
+          setConversationIds((prev) => ({
+            ...prev,
+            [String(item.id)]: existingConversation.id,
+          }));
+
+          router.push(`/chat/${existingConversation.id}`);
+          return;
+        }
+      }
+
+      console.error(
+        "Conversation creation error:",
+        conversationError
+      );
+
+      setMessage(
+        conversationError.message ||
+          "Unable to start chat. Please try again."
+      );
+
+      setChatLoading(null);
+      return;
+    }
+
+    if (conversation) {
+      setConversationIds((prev) => ({
+        ...prev,
+        [String(item.id)]: conversation.id,
+      }));
+
+      router.push(`/chat/${conversation.id}`);
+      return;
+    }
+
+    setChatLoading(null);
   }
 
   async function handleDelete(item: Item) {
@@ -203,13 +402,19 @@ export default function ItemsPage() {
       return;
     }
 
-    // Remove deleted item from UI immediately
-    setItems((prev) => prev.filter((existing) => existing.id !== item.id));
+    setItems((prev) =>
+      prev.filter((existing) => existing.id !== item.id)
+    );
 
-    // Remove it from interested items state too
     setInterestedItems((prev) =>
       prev.filter((id) => id !== item.id)
     );
+
+    setConversationIds((prev) => {
+      const updated = { ...prev };
+      delete updated[String(item.id)];
+      return updated;
+    });
 
     setMessage(`"${item.title}" has been deleted successfully. 🗑️`);
 
@@ -348,6 +553,7 @@ export default function ItemsPage() {
                       <p className="text-2xl font-black">
                         {items.length}
                       </p>
+
                       <p className="mt-1 text-xs text-[#cfe2d1]">
                         Items listed
                       </p>
@@ -355,6 +561,7 @@ export default function ItemsPage() {
 
                     <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
                       <p className="text-2xl font-black">♻️</p>
+
                       <p className="mt-1 text-xs text-[#cfe2d1]">
                         Less waste
                       </p>
@@ -545,11 +752,16 @@ export default function ItemsPage() {
             <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
               {filteredItems.map((item, index) => {
                 const isInterested = interestedItems.includes(item.id);
-                const isInterestLoading = interestLoading === item.id;
+                const isInterestLoading =
+                  interestLoading === item.id;
+                const isChatLoading = chatLoading === item.id;
                 const isDeleteLoading = deleteLoading === item.id;
 
                 const isOwner = item.owner_id === currentUserId;
                 const canDelete = isOwner || isAdmin;
+
+                const conversationId =
+                  conversationIds[String(item.id)];
 
                 return (
                   <article
@@ -645,30 +857,53 @@ export default function ItemsPage() {
                         </span>
                       </div>
 
-                      {/* INTEREST */}
+                      {/* INTEREST / CHAT */}
                       {!isOwner && (
-                        <button
-                          onClick={() => handleInterest(item)}
-                          disabled={
-                            isInterestLoading || isInterested
-                          }
-                          className={`mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-black transition duration-300 ${
-                            isInterested
-                              ? "cursor-default bg-[#e9f1e5] text-[#356b45]"
-                              : "bg-[#173d29] text-white shadow-md hover:-translate-y-0.5 hover:bg-[#24573b] hover:shadow-lg"
-                          }`}
-                        >
-                          {isInterestLoading ? (
-                            <>
-                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                              Sending...
-                            </>
-                          ) : isInterested ? (
-                            <>✓ Interest Sent</>
+                        <>
+                          {!isInterested ? (
+                            <button
+                              onClick={() => handleInterest(item)}
+                              disabled={isInterestLoading}
+                              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#173d29] py-3.5 font-black text-white shadow-md transition duration-300 hover:-translate-y-0.5 hover:bg-[#24573b] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isInterestLoading ? (
+                                <>
+                                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                  Connecting...
+                                </>
+                              ) : (
+                                <>❤️ I'm Interested</>
+                              )}
+                            </button>
                           ) : (
-                            <>❤️ I'm Interested</>
+                            <div className="mt-5 space-y-2">
+                              <div className="flex items-center justify-center gap-2 rounded-2xl bg-[#e9f1e5] py-3 text-sm font-black text-[#356b45]">
+                                ✓ Interest Sent
+                              </div>
+
+                              <button
+                                onClick={() => handleChat(item)}
+                                disabled={isChatLoading}
+                                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#c63868] py-3.5 font-black text-white shadow-md transition duration-300 hover:-translate-y-0.5 hover:bg-[#a92e57] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {isChatLoading ? (
+                                  <>
+                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                    Opening chat...
+                                  </>
+                                ) : (
+                                  <>💬 Message Owner</>
+                                )}
+                              </button>
+
+                              {conversationId && (
+                                <p className="text-center text-xs font-semibold text-gray-400">
+                                  💚 You can now discuss the item with the owner
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </button>
+                        </>
                       )}
 
                       {/* OWNER / ADMIN DELETE */}
@@ -751,3 +986,4 @@ export default function ItemsPage() {
     </main>
   );
 }
+
