@@ -1,4 +1,3 @@
-
 "use client";
 
 import { FormEvent, useState } from "react";
@@ -20,7 +19,11 @@ export default function LoginPage() {
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    // =========================
+    // LOGIN
+    // =========================
+
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -31,17 +34,56 @@ export default function LoginPage() {
       return;
     }
 
+    // =========================
+    // CHECK LOGGED-IN USER
+    // =========================
+
+    const user = data.user;
+
+    if (!user) {
+      setMessage("Unable to get user information.");
+      setLoading(false);
+      return;
+    }
+
+    // =========================
+    // GET USER ROLE
+    // =========================
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Profile role error:", profileError);
+
+      setMessage("Login successful, but profile information could not be loaded.");
+      setLoading(false);
+      return;
+    }
+
+    // =========================
+    // ROLE BASED REDIRECT
+    // =========================
+
     setMessage("Login successful! Redirecting...");
 
-    setLoading(false);
+    if (profile?.role === "admin") {
+      router.push("/admin/dashboard");
+    } else {
+      router.push("/dashboard");
+    }
 
-    router.push("/dashboard");
     router.refresh();
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f8f4] flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-xl border border-gray-100">
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f8f4] p-6">
+      <div className="w-full max-w-md rounded-[2rem] border border-gray-100 bg-white p-8 shadow-xl">
+        {/* LOGO */}
+
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#173d29] text-3xl shadow-lg">
             ♻️
@@ -56,6 +98,8 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* LOGIN FORM */}
+
         <form onSubmit={handleLogin} className="mt-7 space-y-4">
           <input
             type="email"
@@ -64,7 +108,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3.5 text-gray-900 placeholder:text-gray-500 outline-none transition focus:border-[#173d29] focus:ring-4 focus:ring-[#173d29]/10"
+            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3.5 text-gray-900 outline-none transition placeholder:text-gray-500 focus:border-[#173d29] focus:ring-4 focus:ring-[#173d29]/10"
           />
 
           <input
@@ -74,7 +118,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
-            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3.5 text-gray-900 placeholder:text-gray-500 outline-none transition focus:border-[#173d29] focus:ring-4 focus:ring-[#173d29]/10"
+            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3.5 text-gray-900 outline-none transition placeholder:text-gray-500 focus:border-[#173d29] focus:ring-4 focus:ring-[#173d29]/10"
           />
 
           <div className="text-right">
@@ -95,11 +139,15 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* MESSAGE */}
+
         {message && (
           <p className="mt-4 rounded-2xl bg-gray-100 p-3 text-center text-sm text-gray-700">
             {message}
           </p>
         )}
+
+        {/* REGISTER */}
 
         <p className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?{" "}

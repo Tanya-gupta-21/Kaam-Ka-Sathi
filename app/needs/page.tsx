@@ -1,647 +1,459 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type Need = {
-  id: number;
+  id: string;
   user_id: string;
   title: string;
   description: string | null;
   category: string;
-  city: string;
-  locality: string;
+  city: string | null;
+  locality: string | null;
   created_at: string;
 };
 
-const categoryIcons: Record<string, string> = {
-  Books: "📚",
-  Clothes: "👕",
-  Bags: "🎒",
-  Furniture: "🪑",
-  Toys: "🧸",
-  Electronics: "💻",
-  Stationery: "✏️",
-  Household: "🏠",
-  Other: "✨",
+type Profile = {
+  id: string;
+  full_name: string | null;
 };
 
-const categoryStyles: Record<string, string> = {
-  Books: "bg-blue-50 text-blue-600",
-  Clothes: "bg-pink-50 text-pink-600",
-  Bags: "bg-purple-50 text-purple-600",
-  Furniture: "bg-orange-50 text-orange-600",
-  Toys: "bg-yellow-50 text-yellow-700",
-  Electronics: "bg-cyan-50 text-cyan-700",
-  Stationery: "bg-indigo-50 text-indigo-600",
-  Household: "bg-emerald-50 text-emerald-600",
-  Other: "bg-gray-100 text-gray-600",
-};
-
-export default function CommunityNeedsPage() {
+export default function NeedsPage() {
+  const supabase = createClient();
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
 
+  const [user, setUser] = useState<any>(null);
   const [needs, setNeeds] = useState<Need[]>([]);
-  const [helpedNeeds, setHelpedNeeds] = useState<number[]>([]);
+  const [profiles, setProfiles] = useState<
+    Record<string, Profile>
+  >({});
+  const [helpedNeeds, setHelpedNeeds] = useState<
+    Set<string>
+  >(new Set());
+
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [helpingId, setHelpingId] = useState<number | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [helpingId, setHelpingId] = useState<string | null>(
+    null
+  );
 
+  // -----------------------------
+  // Load user + needs
+  // -----------------------------
   useEffect(() => {
-    loadCommunityNeeds();
-  }, []);
+    async function loadData() {
+      setLoading(true);
 
-  async function loadCommunityNeeds() {
-    setLoading(true);
-    setMessage("");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("needs")
-      .select(
-        "id, user_id, title, description, category, city, locality, created_at"
-      )
-      .neq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error(error);
-      setMessage(error.message);
-      setLoading(false);
-      return;
-    }
-
-    setNeeds(data || []);
-
-    const { data: interests, error: interestError } = await supabase
-      .from("need_interests")
-      .select("need_id")
-      .eq("interested_user_id", user.id);
-
-    if (interestError) {
-      console.error(interestError);
-    }
-
-    if (interests) {
-      setHelpedNeeds(
-        interests.map((item) => Number(item.need_id))
-      );
-    }
-
-    setLoading(false);
-  }
-
-  async function handleHelp(needId: number) {
-    setMessage("");
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    if (helpedNeeds.includes(needId)) {
-      return;
-    }
-
-    setHelpingId(needId);
-
-    const { error } = await supabase
-      .from("need_interests")
-      .insert({
-        need_id: needId,
-        interested_user_id: user.id,
-      });
-
-    if (error) {
-      if (error.code === "23505") {
-        setHelpedNeeds((current) =>
-          current.includes(needId)
-            ? current
-            : [...current, needId]
-        );
-        setHelpingId(null);
+      if (!user) {
+        router.push("/login");
         return;
       }
 
-      console.error(error);
-      setMessage(error.message);
-      setHelpingId(null);
+      setUser(user);
+
+      // Fetch community needs
+      const { data: needsData, error: needsError } =
+        await supabase
+          .from("needs")
+          .select(
+            "id, user_id, title, description, category, city, locality, created_at"
+          )
+          .neq("user_id", user.id)
+          .order("created_at", {
+            ascending: false,
+          });
+
+      if (needsError) {
+        console.error(
+          "Needs loading error:",
+          needsError
+        );
+      } else {
+        setNeeds(needsData || []);
+      }
+
+      // Fetch profiles
+      const { data: profileData, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select("id, full_name");
+
+      if (profileError) {
+        console.error(
+          "Profiles loading error:",
+          profileError
+        );
+      } else {
+        const profileMap: Record<string, Profile> = {};
+
+        (profileData || []).forEach((profile) => {
+          profileMap[profile.id] = profile;
+        });
+
+        setProfiles(profileMap);
+      }
+
+      // Fetch user's previous help offers
+      const { data: interestsData, error: interestsError } =
+        await supabase
+          .from("need_interests")
+          .select("need_id")
+          .eq("interested_user_id", user.id);
+
+      if (interestsError) {
+        console.error(
+          "Help offers loading error:",
+          interestsError
+        );
+      } else {
+        setHelpedNeeds(
+          new Set(
+            (interestsData || []).map(
+              (item) => item.need_id
+            )
+          )
+        );
+      }
+
+      setLoading(false);
+    }
+
+    loadData();
+  }, []);
+
+  // -----------------------------
+  // I CAN HELP
+  // -----------------------------
+  async function handleHelp(need: Need) {
+    if (!user) {
+      router.push("/login");
       return;
     }
 
-    setHelpedNeeds((current) =>
-      current.includes(needId)
-        ? current
-        : [...current, needId]
-    );
+    if (helpingId) return;
 
-    setHelpingId(null);
-  }
+    setHelpingId(need.id);
 
-  function formatDate(date: string) {
-    return new Date(date).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  }
+    try {
+      // --------------------------------
+      // 1. Add help interest if missing
+      // --------------------------------
+      const { data: existingInterest, error: interestCheckError } =
+        await supabase
+          .from("need_interests")
+          .select("id")
+          .eq("need_id", need.id)
+          .eq("interested_user_id", user.id)
+          .maybeSingle();
 
-  const categories = useMemo(() => {
-    const uniqueCategories = Array.from(
-      new Set(needs.map((need) => need.category))
-    );
+      if (interestCheckError) {
+        console.error(
+          "Interest check error:",
+          interestCheckError
+        );
+      }
 
-    return ["All", ...uniqueCategories];
-  }, [needs]);
+      if (!existingInterest) {
+        const { error: interestInsertError } =
+          await supabase
+            .from("need_interests")
+            .insert({
+              need_id: need.id,
+              interested_user_id: user.id,
+            });
 
-  const filteredNeeds = useMemo(() => {
-    if (selectedCategory === "All") {
-      return needs;
+        if (interestInsertError) {
+          console.error(
+            "Interest insert error:",
+            interestInsertError
+          );
+
+          alert("Unable to send help request.");
+          return;
+        }
+      }
+
+      // --------------------------------
+      // 2. Check existing conversation
+      // --------------------------------
+      const { data: existingConversation, error: conversationCheckError } =
+        await supabase
+          .from("conversations")
+          .select("id")
+          .eq("need_id", need.id)
+          .eq("interested_user_id", user.id)
+          .maybeSingle();
+
+      if (conversationCheckError) {
+        console.error(
+          "Conversation check error:",
+          conversationCheckError
+        );
+      }
+
+      let conversationId =
+        existingConversation?.id;
+
+      // --------------------------------
+      // 3. Create conversation
+      // --------------------------------
+      if (!conversationId) {
+        const { data: newConversation, error: conversationError } =
+          await supabase
+            .from("conversations")
+            .insert({
+              need_id: need.id,
+              owner_id: need.user_id,
+              interested_user_id: user.id,
+            })
+            .select("id")
+            .single();
+
+        if (conversationError) {
+          console.error(
+            "Conversation creation error:",
+            conversationError
+          );
+
+          alert(
+            "Unable to start chat. Please try again."
+          );
+
+          return;
+        }
+
+        conversationId = newConversation.id;
+      }
+
+      // --------------------------------
+      // 4. Mark as helped
+      // --------------------------------
+      setHelpedNeeds((previous) => {
+        const updated = new Set(previous);
+        updated.add(need.id);
+        return updated;
+      });
+
+      // --------------------------------
+      // 5. Open chat directly
+      // --------------------------------
+      router.push(`/chat/${conversationId}`);
+    } catch (error) {
+      console.error("Help error:", error);
+      alert("Something went wrong.");
+    } finally {
+      setHelpingId(null);
     }
+  }
 
-    return needs.filter(
-      (need) => need.category === selectedCategory
-    );
-  }, [needs, selectedCategory]);
-
-  const helpedCount = helpedNeeds.filter((id) =>
-    needs.some((need) => need.id === id)
-  ).length;
-
+  // -----------------------------
+  // Loading
+  // -----------------------------
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f7f8f4]">
-        <div className="text-center">
-          <div className="mx-auto flex h-20 w-20 animate-pulse items-center justify-center rounded-[1.75rem] bg-[#e9f3eb] text-4xl shadow-sm">
-            ❤️
-          </div>
-
-          <div className="mx-auto mt-5 h-2 w-36 animate-pulse rounded-full bg-gray-200" />
-
-          <p className="mt-4 font-medium text-gray-500">
-            Finding people who need help...
-          </p>
+      <div className="min-h-screen bg-[#f7f8f4] flex items-center justify-center">
+        <div className="text-[#173d29] font-semibold text-lg">
+          Loading community needs...
         </div>
-      </main>
+      </div>
     );
   }
 
+  // -----------------------------
+  // Page
+  // -----------------------------
   return (
-    <main className="min-h-screen bg-[#f7f8f4] text-[#193326]">
-      {/* NAVBAR */}
-      <nav className="sticky top-0 z-50 border-b border-[#e7e4dc] bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-6">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="group text-left"
-          >
-            <div className="text-xl font-black tracking-tight text-[#173d29] transition group-hover:scale-[1.02] md:text-2xl">
-              Kaam Ka Saathi{" "}
-              <span className="inline-block transition group-hover:rotate-12">
-                ♻️
-              </span>
-            </div>
+    <div className="min-h-screen bg-[#f7f8f4]">
+      {/* Header */}
+      <header className="bg-[#173d29] text-white px-6 py-5 shadow-md">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              Community Needs
+            </h1>
 
-            <p className="mt-0.5 text-xs text-gray-500 md:text-sm">
-              Help someone find what they need
+            <p className="text-white/75 mt-1 text-sm">
+              Help someone in your community 🤝
             </p>
+          </div>
+
+          <button
+            onClick={() =>
+              router.push("/dashboard")
+            }
+            className="bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            Dashboard
           </button>
-
-          <div className="flex items-center gap-2 md:gap-3">
-            <button
-              onClick={() => router.push("/dashboard/needs")}
-              className="rounded-xl border border-[#173d29] px-4 py-2.5 text-sm font-bold text-[#173d29] transition duration-300 hover:-translate-y-0.5 hover:bg-[#173d29] hover:text-white hover:shadow-md md:px-5"
-            >
-              My Needs
-            </button>
-
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="hidden rounded-xl bg-[#173d29] px-5 py-2.5 text-sm font-bold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#102d1f] hover:shadow-lg sm:block"
-            >
-              Dashboard
-            </button>
-          </div>
         </div>
-      </nav>
+      </header>
 
-      {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-[#c63868]/5 blur-3xl" />
-        <div className="absolute -right-24 -top-10 h-80 w-80 rounded-full bg-[#173d29]/5 blur-3xl" />
+      {/* Main */}
+      <main className="max-w-7xl mx-auto px-5 py-8">
+        {/* Top section */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-7">
+          <div>
+            <h2 className="text-xl font-bold text-[#173d29]">
+              People who need something
+            </h2>
 
-        <div className="relative mx-auto max-w-7xl px-5 pb-10 pt-12 md:px-6 md:pt-16">
-          <div className="grid gap-8 lg:grid-cols-[1fr_360px] lg:items-end">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#f0d8e1] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#c63868] shadow-sm">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-[#c63868]" />
-                COMMUNITY NEEDS
-              </div>
-
-              <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[1.05] tracking-tight text-[#173d29] md:text-6xl">
-                Someone might need
-                <span className="text-[#c63868]"> your help.</span>
-                <span className="ml-2 inline-block animate-bounce">
-                  ❤️
-                </span>
-              </h1>
-
-              <p className="mt-5 max-w-2xl text-base leading-7 text-gray-600 md:text-lg">
-                Browse what people around your community are looking
-                for. If you have something useful, turn your extra into
-                someone's solution.
-              </p>
-            </div>
-
-            {/* IMPACT CARD */}
-            <div className="group overflow-hidden rounded-[2rem] border border-[#e7e4dc] bg-white p-6 shadow-[0_15px_45px_rgba(23,61,41,0.08)] transition duration-500 hover:-translate-y-1 hover:shadow-[0_20px_55px_rgba(23,61,41,0.12)]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-500">
-                    Community board
-                  </p>
-
-                  <p className="mt-1 text-4xl font-black text-[#173d29]">
-                    {needs.length}
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    {needs.length === 1
-                      ? "person looking for something"
-                      : "people looking for something"}
-                  </p>
-                </div>
-
-                <div className="flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-[#f8e7ed] text-3xl transition duration-500 group-hover:rotate-6 group-hover:scale-110">
-                  🙋
-                </div>
-              </div>
-
-              <div className="mt-6 rounded-2xl bg-[#e9f3eb] p-4">
-                <p className="text-2xl font-black text-[#173d29]">
-                  {helpedCount}
-                </p>
-
-                <p className="mt-1 text-xs font-medium text-gray-600">
-                  {helpedCount === 1
-                    ? "help offer you've made"
-                    : "help offers you've made"}
-                </p>
-              </div>
-            </div>
+            <p className="text-gray-500 text-sm mt-1">
+              If you have what they need, offer your help.
+            </p>
           </div>
+
+          <button
+            onClick={() =>
+              router.push("/needs/new")
+            }
+            className="bg-[#c63868] hover:bg-[#ad2f59] text-white px-5 py-3 rounded-xl font-semibold shadow-sm"
+          >
+            + Post a Need
+          </button>
         </div>
-      </section>
 
-      {/* QUICK VALUES */}
-      <section className="mx-auto max-w-7xl px-5 md:px-6">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-[#e7e4dc] bg-white p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e9f3eb] text-xl">
-                🤝
-              </span>
-
-              <div>
-                <p className="text-sm font-black text-[#173d29]">
-                  Share what you have
-                </p>
-                <p className="text-xs text-gray-500">
-                  Help instead of letting things sit unused.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[#e7e4dc] bg-white p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f8e7ed] text-xl">
-                ❤️
-              </span>
-
-              <div>
-                <p className="text-sm font-black text-[#173d29]">
-                  Make an impact
-                </p>
-                <p className="text-xs text-gray-500">
-                  A small act can solve someone's problem.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[#e7e4dc] bg-white p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f1eee6] text-xl">
-                🌱
-              </span>
-
-              <div>
-                <p className="text-sm font-black text-[#173d29]">
-                  Reduce waste
-                </p>
-                <p className="text-xs text-gray-500">
-                  Keep useful things in use for longer.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CONTENT */}
-      <section className="mx-auto max-w-7xl px-5 py-10 md:px-6 md:py-14">
-        {message && (
-          <div className="mb-7 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm font-medium text-red-600 shadow-sm">
-            <span className="text-lg">⚠️</span>
-            <span>{message}</span>
-          </div>
-        )}
-
-        {/* EMPTY */}
+        {/* Empty state */}
         {needs.length === 0 ? (
-          <div className="relative overflow-hidden rounded-[2.5rem] border border-[#e7e4dc] bg-white px-6 py-16 text-center shadow-[0_20px_60px_rgba(23,61,41,0.07)] md:px-12 md:py-24">
-            <div className="absolute left-0 top-0 h-40 w-40 rounded-full bg-[#e9f3eb] blur-3xl" />
-            <div className="absolute bottom-0 right-0 h-40 w-40 rounded-full bg-[#f8e7ed] blur-3xl" />
-
-            <div className="relative">
-              <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[2rem] bg-[#e9f3eb] text-6xl shadow-sm transition duration-500 hover:rotate-3 hover:scale-105">
-                🌱
-              </div>
-
-              <p className="mt-7 text-xs font-black uppercase tracking-[0.2em] text-[#c63868]">
-                COMMUNITY BOARD
-              </p>
-
-              <h2 className="mt-3 text-3xl font-black text-[#173d29] md:text-4xl">
-                No community needs yet.
-              </h2>
-
-              <p className="mx-auto mt-4 max-w-lg leading-7 text-gray-600">
-                Looks like everyone is doing just fine for now.
-                You can be the first person to post a need and start
-                the conversation.
-              </p>
-
-              <button
-                onClick={() => router.push("/needs/new")}
-                className="mt-8 rounded-2xl bg-[#173d29] px-8 py-4 font-black text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#102d1f] hover:shadow-xl"
-              >
-                Post a Need
-                <span className="ml-2">🙋</span>
-              </button>
+          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
+            <div className="text-5xl mb-4">
+              🤝
             </div>
+
+            <h3 className="text-xl font-bold text-[#173d29]">
+              No community needs yet
+            </h3>
+
+            <p className="text-gray-500 mt-2">
+              Be the first person to post a need.
+            </p>
+
+            <button
+              onClick={() =>
+                router.push("/needs/new")
+              }
+              className="mt-5 bg-[#c63868] text-white px-5 py-3 rounded-xl font-semibold"
+            >
+              Post a Need
+            </button>
           </div>
         ) : (
-          <>
-            {/* SECTION HEADING */}
-            <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#c63868]">
-                  HELP YOUR COMMUNITY
-                </p>
+          /* Needs grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {needs.map((need) => {
+              const profile =
+                profiles[need.user_id];
 
-                <h2 className="mt-2 text-3xl font-black tracking-tight text-[#173d29]">
-                  People are looking for...
-                </h2>
+              const alreadyHelped =
+                helpedNeeds.has(need.id);
 
-                <p className="mt-2 text-sm text-gray-500">
-                  Maybe you already have exactly what someone needs.
-                </p>
-              </div>
+              const isHelping =
+                helpingId === need.id;
 
-              {/* FILTERS */}
-              <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition duration-300 ${
-                      selectedCategory === category
-                        ? "bg-[#173d29] text-white shadow-md"
-                        : "border border-[#e1ded5] bg-white text-gray-600 hover:-translate-y-0.5 hover:border-[#173d29] hover:text-[#173d29]"
-                    }`}
-                  >
-                    {category !== "All" && (
-                      <span className="mr-1">
-                        {categoryIcons[category] || "✨"}
+              return (
+                <div
+                  key={need.id}
+                  className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition overflow-hidden"
+                >
+                  {/* Card top */}
+                  <div className="p-5">
+                    {/* Category */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="inline-flex px-3 py-1 rounded-full bg-[#eef5ef] text-[#173d29] text-xs font-semibold">
+                        {need.category}
                       </span>
+
+                      <span className="text-xs text-gray-400">
+                        {new Date(
+                          need.created_at
+                        ).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {need.title}
+                    </h3>
+
+                    {/* Description */}
+                    {need.description && (
+                      <p className="text-sm text-gray-600 mt-2 line-clamp-3">
+                        {need.description}
+                      </p>
                     )}
 
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
+                    {/* Location */}
+                    {(need.city ||
+                      need.locality) && (
+                      <div className="flex items-center gap-1 text-sm text-gray-500 mt-4">
+                        <span>📍</span>
 
-            {/* FILTER EMPTY */}
-            {filteredNeeds.length === 0 ? (
-              <div className="rounded-[2rem] border border-dashed border-[#d9d6cc] bg-white p-12 text-center">
-                <div className="text-4xl">🔎</div>
-
-                <h3 className="mt-4 text-xl font-black text-[#173d29]">
-                  No requests in this category
-                </h3>
-
-                <p className="mt-2 text-sm text-gray-500">
-                  Try another category to discover more ways to help.
-                </p>
-              </div>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {filteredNeeds.map((need) => {
-                  const alreadyHelped = helpedNeeds.includes(
-                    need.id
-                  );
-
-                  const isHelping = helpingId === need.id;
-
-                  const icon =
-                    categoryIcons[need.category] || "🙋";
-
-                  const badgeStyle =
-                    categoryStyles[need.category] ||
-                    "bg-gray-100 text-gray-600";
-
-                  return (
-                    <div
-                      key={need.id}
-                      className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-[#e7e4dc] bg-white p-6 shadow-[0_10px_35px_rgba(23,61,41,0.05)] transition duration-500 hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(23,61,41,0.12)]"
-                    >
-                      {/* TOP LINE */}
-                      <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-[#173d29] via-[#c63868] to-[#173d29] opacity-0 transition duration-500 group-hover:opacity-100" />
-
-                      {/* CARD HEADER */}
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e9f3eb] text-3xl transition duration-500 group-hover:rotate-6 group-hover:scale-110">
-                          {icon}
-                        </div>
-
-                        <span
-                          className={`rounded-full px-3 py-1.5 text-xs font-black ${badgeStyle}`}
-                        >
-                          {need.category}
+                        <span>
+                          {[
+                            need.locality,
+                            need.city,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")}
                         </span>
                       </div>
+                    )}
 
-                      {/* TITLE */}
-                      <h3 className="mt-6 text-xl font-black leading-snug text-[#173d29]">
-                        {need.title}
-                      </h3>
-
-                      {need.description ? (
-                        <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-600">
-                          {need.description}
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-sm italic text-gray-400">
-                          No description added
-                        </p>
-                      )}
-
-                      {/* LOCATION */}
-                      <div className="mt-5 space-y-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#f7f8f4]">
-                            📍
-                          </span>
-
-                          <span>
-                            {need.locality}, {need.city}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#f7f8f4]">
-                            📅
-                          </span>
-
-                          <span>
-                            Posted {formatDate(need.created_at)}
-                          </span>
-                        </div>
+                    {/* Posted by */}
+                    <div className="flex items-center gap-3 mt-5 pt-4 border-t border-gray-100">
+                      <div className="w-9 h-9 rounded-full bg-[#173d29] text-white flex items-center justify-center font-semibold text-sm">
+                        {profile?.full_name
+                          ?.charAt(0)
+                          .toUpperCase() || "U"}
                       </div>
 
-                      {/* COMMUNITY MESSAGE */}
-                      <div className="mt-5 rounded-2xl border border-[#f0d8e1] bg-[#fff8fa] p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
-                            💡
-                          </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {profile?.full_name ||
+                            "Community User"}
+                        </p>
 
-                          <div>
-                            <p className="text-sm font-black text-[#173d29]">
-                              Can you help?
-                            </p>
-
-                            <p className="mt-0.5 text-xs text-gray-500">
-                              Offer help if you have this available.
-                            </p>
-                          </div>
-                        </div>
+                        <p className="text-xs text-gray-400">
+                          Needs help
+                        </p>
                       </div>
-
-                      {/* HELP BUTTON */}
-                      <button
-                        onClick={() => handleHelp(need.id)}
-                        disabled={alreadyHelped || isHelping}
-                        className={`mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 font-black transition duration-300 ${
-                          alreadyHelped
-                            ? "cursor-default border border-green-200 bg-green-50 text-green-700"
-                            : "bg-[#c63868] text-white shadow-sm hover:-translate-y-1 hover:bg-[#a92e57] hover:shadow-lg active:translate-y-0"
-                        } disabled:cursor-not-allowed disabled:opacity-80`}
-                      >
-                        {isHelping ? (
-                          <>
-                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                            Offering Help...
-                          </>
-                        ) : alreadyHelped ? (
-                          <>
-                            <span>✓</span>
-                            Help Offered
-                          </>
-                        ) : (
-                          <>
-                            <span className="transition group-hover:scale-110">
-                              ❤️
-                            </span>
-                            I Can Help
-                          </>
-                        )}
-                      </button>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
+                  </div>
+
+                  {/* Action */}
+                  <div className="px-5 pb-5">
+                    <button
+                      onClick={() =>
+                        handleHelp(need)
+                      }
+                      disabled={isHelping}
+                      className={`w-full py-3 rounded-xl font-semibold transition ${
+                        alreadyHelped
+                          ? "bg-[#173d29] text-white hover:bg-[#123020]"
+                          : "bg-[#c63868] text-white hover:bg-[#ad2f59]"
+                      } disabled:opacity-60`}
+                    >
+                      {isHelping
+                        ? "Opening chat..."
+                        : alreadyHelped
+                        ? "💬 Open Chat"
+                        : "🤝 I Can Help"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
-      </section>
-
-      {/* BOTTOM CTA */}
-      {needs.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 pb-14 md:px-6">
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-[#173d29] px-7 py-10 text-white shadow-[0_20px_50px_rgba(23,61,41,0.18)] md:px-10">
-            <div className="absolute -right-10 -top-20 h-56 w-56 rounded-full bg-white/5 blur-2xl" />
-            <div className="absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-[#c63868]/20 blur-3xl" />
-
-            <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-2xl font-black">
-                  Have something useful? ♻️
-                </p>
-
-                <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">
-                  Instead of letting it sit unused, share it with
-                  someone who needs it.
-                </p>
-              </div>
-
-              <button
-                onClick={() => router.push("/items/new")}
-                className="shrink-0 rounded-2xl bg-white px-7 py-3.5 font-black text-[#173d29] shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl"
-              >
-                Share an Item →
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* FOOTER */}
-      <footer className="border-t border-[#e7e4dc] bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-8 text-center md:flex-row md:items-center md:justify-between md:text-left">
-          <div>
-            <p className="font-black text-[#173d29]">
-              Kaam Ka Saathi ♻️
-            </p>
-
-            <p className="mt-1 text-xs text-gray-500">
-              Someone's extra can be someone else's need.
-            </p>
-          </div>
-
-          <p className="text-xs text-gray-400">
-            Sharing more. Wasting less. Helping together.
-          </p>
-        </div>
-      </footer>
-    </main>
+      </main>
+    </div>
   );
 }

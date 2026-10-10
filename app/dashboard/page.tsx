@@ -93,10 +93,7 @@ export default function DashboardPage() {
           return;
         }
 
-        // =========================
         // PROFILE
-        // =========================
-
         const { data: profile } = await supabase
           .from("profiles")
           .select("full_name")
@@ -111,10 +108,7 @@ export default function DashboardPage() {
           setUserName(user.user_metadata.full_name);
         }
 
-        // =========================
         // MY NEEDS
-        // =========================
-
         const { data: myNeeds, count } = await supabase
           .from("needs")
           .select("id", { count: "exact" })
@@ -124,10 +118,7 @@ export default function DashboardPage() {
 
         setNeedCount(count || 0);
 
-        // =========================
         // INTERESTS ON MY NEEDS
-        // =========================
-
         if (myNeeds && myNeeds.length > 0) {
           const ids = myNeeds.map((item) => item.id);
 
@@ -146,10 +137,7 @@ export default function DashboardPage() {
           setInterestCount(0);
         }
 
-        // =========================
         // COMMUNITY NEEDS
-        // =========================
-
         const { data: needs } = await supabase
           .from("needs")
           .select(
@@ -187,10 +175,7 @@ export default function DashboardPage() {
     });
   }
 
-  // =========================
   // LOADING
-  // =========================
-
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f7f8f4]">
@@ -218,14 +203,9 @@ export default function DashboardPage() {
       <Navbar />
 
       <div className="relative z-10">
-        {/* ========================================================= */}
         {/* HERO */}
-        {/* ========================================================= */}
-
         <section className="mx-auto max-w-7xl px-5 pb-10 pt-7 md:px-8 md:pt-10">
           <div className="relative overflow-hidden rounded-[2.5rem] bg-[#173d29] shadow-2xl">
-            {/* Decorative shapes */}
-
             <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border-[50px] border-white/5" />
 
             <div className="absolute -bottom-40 right-32 h-96 w-96 rounded-full bg-[#c63868]/20 blur-3xl" />
@@ -234,11 +214,9 @@ export default function DashboardPage() {
 
             <div className="relative grid gap-10 p-7 md:grid-cols-[1fr_340px] md:p-12 lg:p-14">
               {/* HERO TEXT */}
-
               <div className="flex flex-col justify-center">
                 <div className="mb-5 flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-green-100 backdrop-blur">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-green-300" />
-
                   Your community dashboard
                 </div>
 
@@ -256,6 +234,7 @@ export default function DashboardPage() {
                   belongings. Let's make that connection happen.
                 </p>
 
+                {/* HERO ACTION BUTTONS */}
                 <div className="mt-8 flex flex-wrap gap-3">
                   <button
                     onClick={() => router.push("/items/new")}
@@ -270,11 +249,25 @@ export default function DashboardPage() {
                   >
                     🙋 Tell What You Need
                   </button>
+
+                  <button
+                    onClick={() => router.push("/chat")}
+                    className="rounded-2xl border border-white/20 bg-[#c63868] px-6 py-3.5 font-bold text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#a92e57] hover:shadow-xl"
+                  >
+                    💬 Messages
+                  </button>
+
+                  {/* NEW: SMART MATCHES */}
+                  <button
+                    onClick={() => router.push("/matches")}
+                    className="rounded-2xl border border-white/20 bg-[#d9edc2] px-6 py-3.5 font-bold text-[#173d29] shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#c7e5a8] hover:shadow-xl"
+                  >
+                    ✨ Smart Matches
+                  </button>
                 </div>
               </div>
 
               {/* IMPACT CARD */}
-
               <div className="relative">
                 <div className="absolute inset-0 rotate-3 rounded-[2rem] bg-white/5" />
 
@@ -302,7 +295,6 @@ export default function DashboardPage() {
                       <span className="text-sm text-green-100">
                         Needs posted
                       </span>
-
                       <b>{needCount}</b>
                     </div>
 
@@ -310,7 +302,6 @@ export default function DashboardPage() {
                       <span className="text-sm text-green-100">
                         Help offers
                       </span>
-
                       <b>{interestCount}</b>
                     </div>
                   </div>
@@ -324,10 +315,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ========================================================= */}
         {/* STATS */}
-        {/* ========================================================= */}
-
         <section className="mx-auto max-w-7xl px-5 md:px-8">
           <div className="-mt-2 grid grid-cols-2 gap-4 md:grid-cols-4">
             {[
@@ -372,10 +360,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ========================================================= */}
         {/* ACTION SECTION */}
-        {/* ========================================================= */}
-
         <section className="mx-auto max-w-7xl px-5 py-16 md:px-8">
           <div className="mb-7">
             <p className="text-xs font-black tracking-[0.2em] text-[#c63868]">
@@ -395,7 +380,6 @@ export default function DashboardPage() {
 
           <div className="grid gap-5 md:grid-cols-3">
             {/* CARD 1 */}
-
             <button
               onClick={() => router.push("/items/new")}
               className="group relative min-h-[300px] overflow-hidden rounded-[2rem] bg-[#173d29] p-8 text-left text-white shadow-xl transition duration-500 hover:-translate-y-2 hover:shadow-2xl"
@@ -431,7 +415,6 @@ export default function DashboardPage() {
             </button>
 
             {/* CARD 2 */}
-
             <button
               onClick={() => router.push("/needs/new")}
               className="group relative min-h-[300px] overflow-hidden rounded-[2rem] bg-[#c63868] p-8 text-left text-white shadow-xl transition duration-500 hover:-translate-y-2 hover:shadow-2xl"
@@ -467,7 +450,6 @@ export default function DashboardPage() {
             </button>
 
             {/* CARD 3 */}
-
             <button
               onClick={() => router.push("/items")}
               className="group relative min-h-[300px] overflow-hidden rounded-[2rem] bg-[#f1eee6] p-8 text-left shadow-xl transition duration-500 hover:-translate-y-2 hover:bg-white hover:shadow-2xl"
@@ -504,10 +486,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ========================================================= */}
         {/* PEOPLE ARE SHARING */}
-        {/* ========================================================= */}
-
         <section className="border-y border-black/5 bg-white py-16">
           <div className="mx-auto max-w-7xl px-5 md:px-8">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -555,9 +534,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
 
-                    <h4 className="mt-4 text-xl font-black">
-                      {item.title}
-                    </h4>
+                    <h4 className="mt-4 text-xl font-black">{item.title}</h4>
 
                     <p className="mt-2 text-sm leading-6 text-gray-500">
                       {item.description}
@@ -576,10 +553,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ========================================================= */}
         {/* COMMUNITY NEEDS */}
-        {/* ========================================================= */}
-
         <section className="mx-auto max-w-7xl px-5 py-16 md:px-8">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
@@ -679,10 +653,7 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* ========================================================= */}
         {/* CATEGORIES */}
-        {/* ========================================================= */}
-
         <section className="bg-[#f1eee6] py-16">
           <div className="mx-auto max-w-7xl px-5 md:px-8">
             <div className="text-center">
@@ -723,10 +694,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ========================================================= */}
         {/* HOW IT WORKS */}
-        {/* ========================================================= */}
-
         <section className="mx-auto max-w-7xl px-5 py-16 md:px-8">
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
             <div>
@@ -799,10 +767,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ========================================================= */}
         {/* IMPACT */}
-        {/* ========================================================= */}
-
         <section className="mx-auto max-w-7xl px-5 pb-16 md:px-8">
           <div className="relative overflow-hidden rounded-[2.5rem] bg-[#173d29] p-8 text-white md:p-12">
             <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#c63868]/20 blur-3xl" />
@@ -828,19 +793,16 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur">
                   <div className="text-3xl">♻️</div>
-
                   <p className="mt-3 text-sm font-bold">Reuse</p>
                 </div>
 
                 <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur">
                   <div className="text-3xl">🤝</div>
-
                   <p className="mt-3 text-sm font-bold">Connect</p>
                 </div>
 
                 <div className="rounded-2xl bg-white/10 p-5 text-center backdrop-blur">
                   <div className="text-3xl">🌱</div>
-
                   <p className="mt-3 text-sm font-bold">Impact</p>
                 </div>
               </div>
@@ -848,10 +810,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ========================================================= */}
         {/* FINAL CTA */}
-        {/* ========================================================= */}
-
         <section className="mx-auto max-w-7xl px-5 pb-12 md:px-8">
           <div className="relative overflow-hidden rounded-[2rem] border border-[#eadfe3] bg-[#fff5f8] p-8 text-center md:p-12">
             <div className="absolute -left-10 top-0 text-7xl opacity-10">
@@ -894,10 +853,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ========================================================= */}
         {/* FOOTER */}
-        {/* ========================================================= */}
-
         <footer className="border-t border-black/5 bg-white">
           <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-5 py-7 text-sm md:flex-row md:items-center md:px-8">
             <div>
@@ -929,6 +885,22 @@ export default function DashboardPage() {
               >
                 My Needs
               </button>
+
+              {/* MESSAGES */}
+              <button
+                onClick={() => router.push("/chat")}
+                className="font-semibold text-[#173d29] hover:text-[#c63868]"
+              >
+                💬 Messages
+              </button>
+
+              {/* NEW: SMART MATCHES */}
+              <button
+                onClick={() => router.push("/matches")}
+                className="font-semibold text-[#173d29] hover:text-[#c63868]"
+              >
+                ✨ Smart Matches
+              </button>
             </div>
           </div>
         </footer>
@@ -936,4 +908,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
