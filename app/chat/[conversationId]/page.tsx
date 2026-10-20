@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import ReportSafetyAction from "@/components/ReportSafetyAction";
 
 type Message = {
   id: string;
@@ -28,8 +29,10 @@ export default function ChatPage() {
   const conversationId = params.conversationId as string;
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
+  const [conversationBlocked, setConversationBlocked] = useState(false);
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -133,6 +136,16 @@ export default function ChatPage() {
           : conversationData.owner_id;
 
       otherUserIdRef.current = otherId;
+      setOtherUserId(otherId);
+
+      const { data: blockStatus, error: blockStatusError } = await supabase.rpc(
+        "users_are_blocked",
+        { p_user_a: user.id, p_user_b: otherId }
+      );
+      if (blockStatusError) {
+        console.error("Could not load chat safety status:", blockStatusError.message);
+      }
+      setConversationBlocked(blockStatus === true);
 
       const { data: profileData, error: profileError } =
         await supabase
@@ -681,6 +694,15 @@ export default function ChatPage() {
               </p>
             )}
           </div>
+          {otherUserId && (
+            <ReportSafetyAction
+              targetType="conversation"
+              targetId={conversationId}
+              reportedUserId={otherUserId}
+              compact
+              onBlocked={() => setConversationBlocked(true)}
+            />
+          )}
         </div>
       </header>
 
@@ -717,6 +739,14 @@ export default function ChatPage() {
                       : "justify-start"
                   }`}
                 >
+                  {!isMine && (
+                    <ReportSafetyAction
+                      targetType="message"
+                      targetId={msg.id}
+                      reportedUserId={msg.sender_id}
+                      compact
+                    />
+                  )}
                   <div
                     className={`max-w-[78%] rounded-2xl px-4 py-2.5 shadow-sm ${
                       isMine
@@ -775,27 +805,31 @@ export default function ChatPage() {
 
       {/* INPUT */}
       <div className="sticky bottom-0 border-t border-[#eadfd8] bg-white px-4 py-3">
-        <div className="mx-auto flex max-w-4xl items-center gap-2">
-          <input
-            type="text"
-            value={message}
-            onChange={handleMessageChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            disabled={sending}
-            className="flex-1 rounded-full border border-[#ded4ce] bg-[#fffaf7] px-5 py-3 text-sm outline-none transition focus:border-[#c63868] focus:ring-2 focus:ring-[#c63868]/10 disabled:opacity-60"
-          />
+        {conversationBlocked ? (
+          <p role="status" className="mx-auto max-w-4xl rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-900">
+            This chat is paused because one member blocked the other. You can still review messages or submit a report.
+          </p>
+        ) : (
+          <div className="mx-auto flex max-w-4xl items-center gap-2">
+            <input
+              type="text"
+              value={message}
+              onChange={handleMessageChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              disabled={sending}
+              className="flex-1 rounded-full border border-[#ded4ce] bg-[#fffaf7] px-5 py-3 text-sm outline-none transition focus:border-[#c63868] focus:ring-2 focus:ring-[#c63868]/10 disabled:opacity-60"
+            />
 
-          <button
-            onClick={sendMessage}
-            disabled={
-              sending || !message.trim()
-            }
-            className="rounded-full bg-[#c63868] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#a92e57] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {sending ? "..." : "Send"}
-          </button>
-        </div>
+            <button
+              onClick={sendMessage}
+              disabled={sending || !message.trim()}
+              className="rounded-full bg-[#c63868] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#a92e57] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sending ? "..." : "Send"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

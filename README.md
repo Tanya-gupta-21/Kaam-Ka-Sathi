@@ -11,6 +11,7 @@ Kaam Ka Sathi brings item sharing, community needs, local services, smart sugges
 - **Offer local services:** Publish services and help neighbors find a suitable provider.
 - **Discover matches:** Browse suggested item and need matches, with optional AI ranking.
 - **Coordinate safely:** Chat with members, receive notifications, and track item handovers.
+- **Protect your experience:** Report items, needs, services, members, or chat messages; block members and manage blocks from Safety settings.
 - **Manage an account:** Register, sign in, update a profile, recover access, and use member/admin views.
 - **Responsive interface:** Use the app on desktop or mobile, with reduced-motion preferences respected.
 
@@ -35,8 +36,9 @@ AI features use the Gemini API from server-side routes and require a signed-in m
 | Draft with AI | Turns a member's notes into a suggested title, description, and category for item, need, or service forms. | Review and edit the draft before using it. |
 | Rank with AI | Reorders up to five item/need candidates using semantic relevance. | Choose which suggestion, if any, to open. |
 | Check with AI | Compares a resized item photo with the entered title/category and suggests possible edits. | Review the result; it does not verify ownership, condition, authenticity, credentials, or safety. |
+| Safety report triage | When an admin chooses **Analyze with AI**, classifies the report reason, suggests a priority, and summarizes the concern for review. | Admins decide what to do. AI does not determine whether an allegation is true, remove content, or restrict an account. |
 
-AI does not publish or reject content, contact members, or complete a handover. Its suggestions may be inaccurate. When a member invokes an AI feature, the relevant notes, selected match details, or resized photo are sent to Gemini. Do not include sensitive personal information. AI endpoints require authentication and apply per-user rate limits; the Gemini key stays on the server.
+AI does not publish or reject content, contact members, or complete a handover. Its suggestions may be inaccurate. When a member invokes an AI feature, the relevant notes, selected match details, or resized photo are sent to Gemini. When an admin explicitly runs report triage, only the report type, reason, and details are sent; member names, account IDs, and chat excerpts are excluded. Do not include sensitive personal information. AI endpoints require authentication and apply per-user rate limits; the Gemini key stays on the server.
 
 ## Technology
 
@@ -71,7 +73,7 @@ AI does not publish or reject content, contact members, or complete a handover. 
 
    On Windows PowerShell, use `Copy-Item .env.example .env.local` instead. Fill in the Supabase values and, if desired, the Gemini values below.
 
-3. Apply all SQL migrations in `supabase/migrations/` in filename order. Use the Supabase SQL editor, or link the Supabase CLI to your project and run `supabase db push`.
+3. Apply all SQL migrations in `supabase/migrations/` in filename order. Use the Supabase SQL editor, or link the Supabase CLI to your project and run `supabase db push`. The later migrations add AI request limits, match chats, community reports, and member-block enforcement.
 
    **Important:** `202610200001_initial_schema.sql` is for a new, empty project. It creates the app schema, policies, storage buckets, auth/profile and notification triggers, handover and role-management functions, and Realtime publication entries. Do not apply it to a project that already has app tables until you have backed up and reviewed that database.
 

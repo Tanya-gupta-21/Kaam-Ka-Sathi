@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import ReportSafetyAction from "@/components/ReportSafetyAction";
 
 type Need = {
   id: string;
@@ -448,6 +449,14 @@ export default function NeedsPage() {
                         ? "💬 Open Chat"
                         : "🤝 I Can Help"}
                     </button>
+                    {need.user_id !== user?.id && (
+                      <ReportSafetyAction
+                        targetType="need"
+                        targetId={need.id}
+                        reportedUserId={need.user_id}
+                        onBlocked={() => setNeeds((current) => current.filter((row) => row.user_id !== need.user_id))}
+                      />
+                    )}
                   </div>
                 </div>
               );

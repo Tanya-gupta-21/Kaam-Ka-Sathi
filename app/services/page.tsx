@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/client";
 import { SERVICE_CATEGORIES, serviceIcon } from "@/lib/serviceCategories";
+import ReportSafetyAction from "@/components/ReportSafetyAction";
 
 type Service = {
   id: string;
@@ -175,6 +176,7 @@ export default function ServicesPage() {
                   <div><p className="font-bold">{profiles[service.provider_id]?.full_name || "Community member"}</p><p className="mt-1 text-gray-500">📍 {service.locality ? `${service.locality}, ` : ""}{service.city}</p></div>
                   <button onClick={() => void contactProvider(service)} disabled={busyId === service.id || service.provider_id === userId} className="rounded-xl bg-[#173d29] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busyId === service.id ? "Opening chat…" : service.provider_id === userId ? "Your service" : "Message provider"}</button>
                 </div>
+                {service.provider_id !== userId && <div className="mt-3 flex justify-end"><ReportSafetyAction targetType="service" targetId={service.id} reportedUserId={service.provider_id} compact onBlocked={() => setServices((current) => current.filter((row) => row.provider_id !== service.provider_id))} /></div>}
               </article>
             ))}
           </div>

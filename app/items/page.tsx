@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import ReportSafetyAction from "@/components/ReportSafetyAction";
 
 type Item = {
   id: string | number;
@@ -1121,6 +1122,15 @@ export default function ItemsPage() {
                             <>🗑️ Delete Item</>
                           )}
                         </button>
+                      )}
+
+                      {!isOwner && item.owner_id && (
+                        <ReportSafetyAction
+                          targetType="item"
+                          targetId={item.id}
+                          reportedUserId={item.owner_id}
+                          onBlocked={() => setItems((current) => current.filter((row) => row.owner_id !== item.owner_id))}
+                        />
                       )}
                     </div>
                   </article>

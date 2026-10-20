@@ -303,6 +303,14 @@ export default function AdminDashboardPage() {
               Interests
             </button>
 
+            <button
+              onClick={() => router.push("/admin/reports")}
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left font-semibold text-green-100 transition hover:bg-white/10 hover:text-white"
+            >
+              <span>🛡️</span>
+              Safety Reports
+            </button>
+
             {/* User Dashboard */}
 
             <button
@@ -669,6 +677,17 @@ export default function AdminDashboardPage() {
                   <p className="mt-1 text-xs text-gray-500">
                     Monitor interests and help offers.
                   </p>
+                </button>
+
+                <button
+                  onClick={() =>
+                    router.push("/admin/reports")
+                  }
+                  className="rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:-translate-y-1 hover:shadow-md"
+                >
+                  <div className="text-2xl">🛡️</div>
+                  <p className="mt-3 font-black">Safety Reports</p>
+                  <p className="mt-1 text-xs text-gray-500">Review member reports and AI triage.</p>
                 </button>
 
               </div>

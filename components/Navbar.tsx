@@ -231,6 +231,7 @@ export default function Navbar() {
     { label: "Services", icon: "🛠️", href: "/services" },
     { label: "My Services", icon: "🧰", href: "/dashboard/services" },
     { label: "Handovers", icon: "🎁", href: "/handovers" },
+    { label: "Safety", icon: "🛡️", href: "/safety" },
   ];
 
   function isActive(href: string) {
