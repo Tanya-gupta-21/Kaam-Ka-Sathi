@@ -14,6 +14,18 @@ Kaam Ka Sathi brings item sharing, community needs, local services, smart sugges
 - **Manage an account:** Register, sign in, update a profile, recover access, and use member/admin views.
 - **Responsive interface:** Use the app on desktop or mobile, with reduced-motion preferences respected.
 
+## Screenshots
+
+Screenshots from the app show the public landing page, community item listings, member dashboard, and admin dashboard. Select an image to view it at full size.
+
+| Landing page | Community items |
+| --- | --- |
+| [![Kaam Ka Sathi landing page](docs/screenshots/landing-page.png)](docs/screenshots/landing-page.png) | [![Community item listings](docs/screenshots/community-items.png)](docs/screenshots/community-items.png) |
+
+| Member dashboard | Admin dashboard |
+| --- | --- |
+| [![Member dashboard](docs/screenshots/member-dashboard.png)](docs/screenshots/member-dashboard.png) | [![Admin dashboard](docs/screenshots/admin-dashboard.png)](docs/screenshots/admin-dashboard.png) |
+
 ## AI assistance
 
 AI features use the Gemini API from server-side routes and require a signed-in member and a configured API key:
