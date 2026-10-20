@@ -163,7 +163,7 @@ export default function LoginPage() {
 
           <div className="relative mt-12 rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
             <p className="text-sm leading-6 text-green-50">
-              “One person's unused item can become another person's
+              “One person&apos;s unused item can become another person&apos;s
               everyday essential.”
             </p>
             <p className="mt-3 text-xs font-bold uppercase tracking-wider text-green-200">

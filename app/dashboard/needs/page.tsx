@@ -58,9 +58,6 @@ export default function MyNeedsPage() {
   const [needs, setNeeds] = useState<Need[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-  const [conversationIds, setConversationIds] = useState<
-    Record<string, number>
-  >({});
 
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -68,10 +65,6 @@ export default function MyNeedsPage() {
   const [chatLoading, setChatLoading] = useState<string | null>(null);
   const [expandedNeed, setExpandedNeed] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("All");
-
-  useEffect(() => {
-    loadNeeds();
-  }, []);
 
   async function loadNeeds() {
     setLoading(true);
@@ -107,7 +100,6 @@ export default function MyNeedsPage() {
     if (loadedNeeds.length === 0) {
       setInterests([]);
       setProfiles({});
-      setConversationIds({});
       setLoading(false);
       return;
     }
@@ -139,7 +131,7 @@ export default function MyNeedsPage() {
       if (userIds.length > 0) {
         const { data: profileData, error: profileError } =
           await supabase
-            .from("profiles")
+            .from("profiles_public")
             .select(
               "id, full_name, city, locality, avatar_url"
             )
@@ -157,37 +149,17 @@ export default function MyNeedsPage() {
           setProfiles(profileMap);
         }
 
-        // Existing conversations for these needs
-        const { data: conversationData, error: conversationError } =
-          await supabase
-            .from("conversations")
-            .select("id, need_id, interested_user_id")
-            .in("need_id", needIds)
-            .eq("owner_id", user.id);
-
-        if (conversationError) {
-          console.error(conversationError);
-        } else {
-          const conversationMap: Record<string, number> = {};
-
-          (conversationData || []).forEach((conversation) => {
-            if (
-              conversation.need_id !== null &&
-              conversation.interested_user_id
-            ) {
-              conversationMap[
-                `${conversation.need_id}-${conversation.interested_user_id}`
-              ] = conversation.id;
-            }
-          });
-
-          setConversationIds(conversationMap);
-        }
       }
     }
 
     setLoading(false);
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadNeeds(), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleChat(
     needId: number,
@@ -267,12 +239,6 @@ export default function MyNeedsPage() {
     }
 
     if (newConversation) {
-      setConversationIds((current) => ({
-        ...current,
-        [`${needId}-${interestedUserId}`]:
-          newConversation.id,
-      }));
-
       router.push(`/chat/${newConversation.id}`);
     }
 
@@ -436,7 +402,7 @@ export default function MyNeedsPage() {
               </div>
 
               <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[1.05] tracking-tight text-[#173d29] md:text-6xl">
-                Things I'm
+                Things I&apos;m
                 <span className="text-[#c63868]">
                   {" "}Looking For.
                 </span>
@@ -446,8 +412,8 @@ export default function MyNeedsPage() {
               </h1>
 
               <p className="mt-5 max-w-2xl text-base leading-7 text-gray-600 md:text-lg">
-                Keep track of everything you've asked your
-                community for. When someone can help, you'll
+                Keep track of everything you&apos;ve asked your
+                community for. When someone can help, you&apos;ll
                 see them right here.
               </p>
             </div>
@@ -578,7 +544,7 @@ export default function MyNeedsPage() {
             </h2>
 
             <p className="mx-auto mt-4 max-w-lg leading-7 text-gray-600">
-              Looking for something you don't have?
+              Looking for something you don&apos;t have?
               Tell your community. Someone nearby might
               already have exactly what you need.
             </p>
@@ -601,7 +567,7 @@ export default function MyNeedsPage() {
                 </p>
 
                 <h2 className="mt-2 text-3xl font-black tracking-tight text-[#173d29]">
-                  Everything you're looking for
+                  Everything you&apos;re looking for
                 </h2>
 
                 <p className="mt-2 text-sm text-gray-500">
@@ -866,7 +832,7 @@ export default function MyNeedsPage() {
                               </p>
 
                               <p className="mt-0.5 text-xs text-gray-500">
-                                Your community hasn't responded yet.
+                                Your community hasn&apos;t responded yet.
                               </p>
                             </div>
 

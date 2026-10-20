@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           </h1>
 
           <p className="mt-2 text-gray-600">
-            Enter your registered email and we'll send you a reset link.
+            Enter your registered email and we&apos;ll send you a reset link.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -14,10 +14,49 @@ type NotificationRow = {
   created_at: string;
 };
 
+// Which page should a notification open?
+function destinationFor(notification: NotificationRow) {
+  const url = notification.payload?.url;
+
+  if (
+    typeof url === "string" &&
+    url.startsWith("/") &&
+    !url.startsWith("//") &&
+    !url.includes("\\")
+  ) {
+    try {
+      const destination = new URL(url, "https://kaam-ka-sathi.invalid");
+      if (destination.origin === "https://kaam-ka-sathi.invalid") {
+        return `${destination.pathname}${destination.search}${destination.hash}`;
+      }
+    } catch {
+      // Ignore malformed notification destinations and use the type fallback.
+    }
+  }
+
+  if (notification.type === "new_message") {
+    return typeof notification.payload?.conversation_id === "string"
+      ? `/chat/${notification.payload.conversation_id}`
+      : "/chat";
+  }
+
+  if (notification.type === "new_interest") {
+    return "/needs";
+  }
+
+  return "/notifications";
+}
+
+function iconFor(type: string) {
+  if (type === "new_message") return "💬";
+  if (type.startsWith("handover")) return "🤝";
+  return "❤️";
+}
+
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -50,19 +89,30 @@ export default function Navbar() {
       return;
     }
 
-    const rows = (data ?? []) as NotificationRow[];
+    setNotifications((data ?? []) as NotificationRow[]);
 
-    setNotifications(rows);
-    setUnreadCount(rows.filter((item) => !item.read_at).length);
+    // Real unread count (not limited to the latest 20)
+    const { count, error: countError } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .is("read_at", null);
+
+    if (!countError) {
+      setUnreadCount(count ?? 0);
+    }
   }, [supabase]);
 
   useEffect(() => {
-    setMenuOpen(false);
-    setNotificationOpen(false);
+    const timer = window.setTimeout(() => {
+      setMenuOpen(false);
+      setNotificationOpen(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   useEffect(() => {
-    void fetchNotifications();
+    const timer = window.setTimeout(() => void fetchNotifications(), 0);
 
     const handleFocus = () => {
       void fetchNotifications();
@@ -71,9 +121,49 @@ export default function Navbar() {
     window.addEventListener("focus", handleFocus);
 
     return () => {
+      window.clearTimeout(timer);
       window.removeEventListener("focus", handleFocus);
     };
   }, [fetchNotifications]);
+
+  // Live updates: new notification arrives -> bell updates by itself
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let active = true;
+
+    async function subscribe() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || !active) return;
+
+      channel = supabase
+        .channel(`navbar-notifications-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            void fetchNotifications();
+          }
+        )
+        .subscribe();
+    }
+
+    void subscribe();
+
+    return () => {
+      active = false;
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
+    };
+  }, [fetchNotifications, supabase]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -96,14 +186,7 @@ export default function Navbar() {
   }
 
   async function openNotification(notification: NotificationRow) {
-    const destination =
-      notification.type === "new_message"
-        ? typeof notification.payload?.conversation_id === "string"
-          ? `/chat/${notification.payload.conversation_id}`
-          : "/chat"
-        : notification.type === "new_interest"
-          ? "/needs"
-          : "/notifications";
+    const destination = destinationFor(notification);
 
     if (!notification.read_at) {
       const {
@@ -140,11 +223,14 @@ export default function Navbar() {
 
   const links = [
     { label: "Dashboard", icon: "🏠", href: "/dashboard" },
-    { label: "Browse Items", icon: "📦", href: "/items" },
-    { label: "My Items", icon: "📦", href: "/dashboard/items" },
-    { label: "Community Needs", icon: "🤝", href: "/needs" },
+    { label: "Browse", icon: "📦", href: "/items" },
+    { label: "My Items", icon: "🗂️", href: "/dashboard/items" },
+    { label: "Needs", icon: "🤝", href: "/needs" },
     { label: "My Needs", icon: "📋", href: "/dashboard/needs" },
-    { label: "Who's Interested", icon: "❤️", href: "/dashboard/interests" },
+    { label: "Interested", icon: "❤️", href: "/dashboard/interests" },
+    { label: "Services", icon: "🛠️", href: "/services" },
+    { label: "My Services", icon: "🧰", href: "/dashboard/services" },
+    { label: "Handovers", icon: "🎁", href: "/handovers" },
   ];
 
   function isActive(href: string) {
@@ -155,7 +241,7 @@ export default function Navbar() {
     return pathname.startsWith(href);
   }
 
-  function NotificationBell() {
+  function renderNotificationBell() {
     return (
       <div className="relative">
         <button
@@ -183,7 +269,7 @@ export default function Navbar() {
               className="fixed inset-0 z-40 cursor-default"
             />
 
-            <div className="absolute right-0 top-14 z-50 w-[min(90vw,360px)] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
+            <div className="motion-enter absolute right-0 top-14 z-50 w-[min(90vw,360px)] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
                 <div>
                   <h3 className="font-black text-[#173d29]">Notifications</h3>
@@ -216,7 +302,7 @@ export default function Navbar() {
                       You’re all caught up!
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      New messages and interests will appear here.
+                      New messages, interests and handovers will appear here.
                     </p>
                   </div>
                 ) : (
@@ -230,7 +316,7 @@ export default function Navbar() {
                       }`}
                     >
                       <span className="mt-0.5 text-xl">
-                        {notification.type === "new_message" ? "💬" : "❤️"}
+                        {iconFor(notification.type)}
                       </span>
 
                       <span className="min-w-0 flex-1">
@@ -293,19 +379,20 @@ export default function Navbar() {
             </div>
           </button>
 
-          <div className="hidden items-center gap-1 lg:flex">
+          {/* DESKTOP LINKS */}
+          <div className="hidden items-center gap-0.5 xl:flex">
             {links.map((link) => (
               <button
                 type="button"
                 key={link.href}
                 onClick={() => router.push(link.href)}
-                className={`relative rounded-xl px-3 py-2.5 text-sm font-bold transition duration-200 ${
+                className={`relative rounded-xl px-2.5 py-2.5 text-sm font-bold transition duration-200 ${
                   isActive(link.href)
                     ? "bg-[#edf3ed] text-[#173d29]"
                     : "text-gray-500 hover:bg-gray-50 hover:text-[#173d29]"
                 }`}
               >
-                <span className="mr-1.5">{link.icon}</span>
+                <span className="mr-1.5 hidden 2xl:inline">{link.icon}</span>
                 {link.label}
 
                 {isActive(link.href) && (
@@ -315,8 +402,22 @@ export default function Navbar() {
             ))}
           </div>
 
-          <div className="hidden items-center gap-2 lg:flex">
-            <NotificationBell />
+          {/* DESKTOP RIGHT SIDE */}
+          <div className="hidden items-center gap-2 xl:flex">
+            {renderNotificationBell()}
+
+            <button
+              type="button"
+              onClick={() => router.push("/profile")}
+              aria-label="My profile"
+              className={`flex h-11 w-11 items-center justify-center rounded-xl border text-xl transition ${
+                pathname.startsWith("/profile")
+                  ? "border-[#173d29] bg-[#edf3ed]"
+                  : "border-gray-200 bg-white hover:bg-[#edf3ed]"
+              }`}
+            >
+              👤
+            </button>
 
             <button
               type="button"
@@ -336,8 +437,9 @@ export default function Navbar() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 lg:hidden">
-            <NotificationBell />
+          {/* MOBILE / TABLET RIGHT SIDE */}
+          <div className="flex items-center gap-2 xl:hidden">
+            {renderNotificationBell()}
 
             <button
               type="button"
@@ -359,8 +461,9 @@ export default function Navbar() {
           </div>
         </div>
 
+        {/* MOBILE / TABLET MENU */}
         {menuOpen && (
-          <div className="border-t border-gray-100 pb-4 pt-3 lg:hidden">
+          <div className="motion-enter border-t border-gray-100 pb-4 pt-3 xl:hidden">
             <div className="space-y-1">
               {links.map((link) => (
                 <button
@@ -381,6 +484,23 @@ export default function Navbar() {
                   )}
                 </button>
               ))}
+
+              <button
+                type="button"
+                onClick={() => router.push("/profile")}
+                className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition ${
+                  pathname.startsWith("/profile")
+                    ? "bg-[#edf3ed] text-[#173d29]"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <span className="text-lg">👤</span>
+                My Profile
+
+                {pathname.startsWith("/profile") && (
+                  <span className="ml-auto text-[#c63868]">●</span>
+                )}
+              </button>
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import AiDraftAssistant from "@/components/AiDraftAssistant";
 
 const categories = [
   { name: "Books", icon: "📚" },
@@ -210,7 +211,7 @@ export default function NewNeedPage() {
 
               <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[1.05] tracking-tight text-[#173d29] md:text-6xl">
                 Tell us what
-                <span className="text-[#c63868]"> you're looking for.</span>
+                <span className="text-[#c63868]"> you&apos;re looking for.</span>
                 <span className="ml-2 inline-block animate-bounce">
                   🙋
                 </span>
@@ -274,7 +275,7 @@ export default function NewNeedPage() {
             </div>
           </div>
 
-          <div className="p-6 md:p-9">
+          <div className="motion-enter p-6 md:p-9">
             {/* TITLE */}
             <div>
               <div className="mb-2 flex items-center justify-between">
@@ -317,6 +318,22 @@ export default function NewNeedPage() {
                 rows={5}
                 placeholder="Mention size, quantity, class, condition preference, or anything else that might help..."
                 className="w-full resize-none rounded-2xl border border-[#dedbd2] bg-[#faf9f5] px-5 py-4 text-sm leading-6 outline-none transition duration-300 placeholder:text-gray-400 focus:border-[#173d29] focus:bg-white focus:ring-4 focus:ring-[#173d29]/10"
+              />
+            </div>
+
+            <div className="mt-5">
+              <AiDraftAssistant
+                task="need_draft"
+                notes={[
+                  title.trim() && "Need: " + title.trim(),
+                  description.trim() && "Details: " + description.trim(),
+                ].filter(Boolean).join("\n")}
+                category={category}
+                onApply={(draft) => {
+                  setTitle(draft.title.slice(0, 100));
+                  setDescription(draft.description.slice(0, 500));
+                  setCategory(draft.category);
+                }}
               />
             </div>
 
@@ -565,7 +582,7 @@ export default function NewNeedPage() {
             </p>
 
             <p className="mt-1 text-xs text-gray-500">
-              Your need could be someone else's opportunity to help.
+              Your need could be someone else&apos;s opportunity to help.
             </p>
           </div>
 

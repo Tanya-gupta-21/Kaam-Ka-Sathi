@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 type Message = {
   id: string;
@@ -11,14 +12,6 @@ type Message = {
   message: string;
   created_at: string;
   read_at: string | null;
-};
-
-type Conversation = {
-  id: string;
-  owner_id: string;
-  interested_user_id: string;
-  item_id: string | null;
-  need_id: string | null;
 };
 
 type Profile = {
@@ -36,8 +29,6 @@ export default function ChatPage() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversation, setConversation] =
-    useState<Conversation | null>(null);
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
 
   const [message, setMessage] = useState("");
@@ -50,7 +41,7 @@ export default function ChatPage() {
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const otherUserIdRef = useRef<string | null>(null);
 
   // --------------------------------------------------
@@ -99,7 +90,7 @@ export default function ChatPage() {
         await supabase
           .from("conversations")
           .select(
-            "id, owner_id, interested_user_id, item_id, need_id"
+            "id, owner_id, interested_user_id, item_id, need_id, service_id"
           )
           .eq("id", conversationId)
           .single();
@@ -133,8 +124,6 @@ export default function ChatPage() {
         return;
       }
 
-      setConversation(conversationData);
-
       // ---------------------------------------------
       // OTHER USER
       // ---------------------------------------------
@@ -147,7 +136,7 @@ export default function ChatPage() {
 
       const { data: profileData, error: profileError } =
         await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("id, full_name, last_seen")
           .eq("id", otherId)
           .single();

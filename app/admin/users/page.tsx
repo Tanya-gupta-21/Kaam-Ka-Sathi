@@ -22,10 +22,6 @@ export default function AdminUsersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [adminId, setAdminId] = useState("");
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
   async function loadUsers() {
     try {
       setLoading(true);
@@ -70,6 +66,12 @@ export default function AdminUsersPage() {
     }
   }
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadUsers(), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function changeRole(user: UserProfile) {
     if (user.id === adminId) {
       alert("You cannot change your own admin role.");
@@ -87,10 +89,10 @@ export default function AdminUsersPage() {
     try {
       setUpdatingId(user.id);
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({ role: newRole })
-        .eq("id", user.id);
+      const { error } = await supabase.rpc("admin_set_user_role", {
+        p_user_id: user.id,
+        p_role: newRole,
+      });
 
       if (error) {
         console.error("Role update error:", error);

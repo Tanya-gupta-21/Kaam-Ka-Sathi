@@ -7,14 +7,14 @@ import { useRouter } from "next/navigation";
 type Interest = {
   id: string;
   item_id: string;
-  user_id: string;
+  interested_user_id: string;
   created_at: string;
 };
 
 type NeedInterest = {
   id: string;
   need_id: string;
-  user_id: string;
+  interested_user_id: string;
   created_at: string;
 };
 
@@ -57,10 +57,6 @@ export default function AdminInterestsPage() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   async function loadData() {
     try {
       setLoading(true);
@@ -94,7 +90,7 @@ export default function AdminInterestsPage() {
       const { data: interestData, error: interestError } =
         await supabase
           .from("interests")
-          .select("id, item_id, user_id, created_at")
+          .select("id, item_id, interested_user_id, created_at")
           .order("created_at", {
             ascending: false,
           });
@@ -112,7 +108,7 @@ export default function AdminInterestsPage() {
         error: needInterestError,
       } = await supabase
         .from("need_interests")
-        .select("id, need_id, user_id, created_at")
+        .select("id, need_id, interested_user_id, created_at")
         .order("created_at", {
           ascending: false,
         });
@@ -179,6 +175,12 @@ export default function AdminInterestsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadData(), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function getItem(itemId: string) {
     return items.find(
@@ -281,7 +283,7 @@ export default function AdminInterestsPage() {
 
     return interests.filter((interest) => {
       const item = getItem(interest.item_id);
-      const user = getUser(interest.user_id);
+      const user = getUser(interest.interested_user_id);
 
       return (
         !searchText ||
@@ -317,7 +319,7 @@ export default function AdminInterestsPage() {
         );
 
         const user = getUser(
-          interest.user_id
+          interest.interested_user_id
         );
 
         return (
@@ -698,7 +700,7 @@ export default function AdminInterestsPage() {
                             );
 
                             const user = getUser(
-                              interest.user_id
+                              interest.interested_user_id
                             );
 
                             return (
@@ -873,7 +875,7 @@ export default function AdminInterestsPage() {
                             );
 
                             const user = getUser(
-                              interest.user_id
+                              interest.interested_user_id
                             );
 
                             return (

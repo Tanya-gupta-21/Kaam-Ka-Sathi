@@ -204,6 +204,9 @@ export default function SmartMatchesPage() {
   const [openingChat, setOpeningChat] = useState<string | null>(null);
   const [minimumScore, setMinimumScore] = useState("25");
   const [locationOnly, setLocationOnly] = useState(false);
+  const [reviewingWithAi, setReviewingWithAi] = useState(false);
+  const [aiReviewError, setAiReviewError] = useState("");
+  const [aiReviews, setAiReviews] = useState<Record<string, { score: number; reason: string }>>({});
 
   const loadMatches = useCallback(async () => {
     setLoading(true);
@@ -330,7 +333,8 @@ export default function SmartMatchesPage() {
   }, [supabase, router, locationOnly]);
 
   useEffect(() => {
-    void loadMatches();
+    const timer = window.setTimeout(() => void loadMatches(), 0);
+    return () => window.clearTimeout(timer);
   }, [loadMatches]);
 
   async function openMatchChat(match: SmartMatch) {
@@ -386,9 +390,71 @@ export default function SmartMatchesPage() {
     }
   }
 
-  const visibleMatches = matches.filter(
-    (match) => match.score >= Number(minimumScore)
-  );
+  async function reviewMatchesWithAi() {
+    const candidates = matches
+      .filter((match) => (aiReviews[match.id]?.score ?? match.score) >= Number(minimumScore))
+      .slice(0, 5);
+    if (!candidates.length) return;
+    setReviewingWithAi(true);
+    setAiReviewError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace("/login");
+        return;
+      }
+      const response = await fetch("/api/ai/assist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        body: JSON.stringify({
+          task: "rank_matches",
+          matches: candidates.map((match) => ({
+            id: match.id,
+            item_title: match.item.title,
+            item_description: match.item.description || "",
+            item_category: match.item.category,
+            need_title: match.need.title,
+            need_description: match.need.description || "",
+            need_category: match.need.category,
+            city: match.item.city || match.need.city || "",
+          })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "AI match review failed.");
+      if (!Array.isArray(result.matches)) throw new Error("AI returned an incomplete match review.");
+      const nextReviews: Record<string, { score: number; reason: string }> = {};
+      for (const row of result.matches) {
+        if (
+          row &&
+          typeof row.id === "string" &&
+          candidates.some((candidate) => candidate.id === row.id) &&
+          Number.isFinite(Number(row.score))
+        ) {
+          nextReviews[row.id] = {
+            score: Math.max(0, Math.min(100, Math.round(Number(row.score)))),
+            reason: typeof row.reason === "string" ? row.reason.slice(0, 180) : "",
+          };
+        }
+      }
+      if (Object.keys(nextReviews).length === 0) throw new Error("AI could not rank these matches. Try again.");
+      setAiReviews((current) => ({ ...current, ...nextReviews }));
+    } catch (err) {
+      setAiReviewError(err instanceof Error ? err.message : "AI match review failed.");
+    } finally {
+      setReviewingWithAi(false);
+    }
+  }
+
+  const visibleMatches = matches
+    .filter((match) => (aiReviews[match.id]?.score ?? match.score) >= Number(minimumScore))
+    .sort((a, b) => {
+      const aiDifference = (aiReviews[b.id]?.score ?? -1) - (aiReviews[a.id]?.score ?? -1);
+      return aiDifference || b.score - a.score;
+    });
 
   if (loading) {
     return (
@@ -468,6 +534,18 @@ export default function SmartMatchesPage() {
         </div>
 
         <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-[#e5e2da] bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold">AI relevance review</p>
+            <p className="mt-1 text-xs text-gray-500">Gemini reviews the title, description, category, and city for up to 5 matches.</p>
+            <button
+              onClick={() => void reviewMatchesWithAi()}
+              disabled={reviewingWithAi || visibleMatches.length === 0}
+              className="mt-2 rounded-xl bg-violet-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {reviewingWithAi ? "Reviewing…" : "✨ Rank with AI"}
+            </button>
+            {aiReviewError && <p role="alert" className="mt-2 text-xs text-red-700">{aiReviewError}</p>}
+          </div>
           <div>
             <label
               htmlFor="minimum-score"
@@ -552,6 +630,7 @@ export default function SmartMatchesPage() {
             {visibleMatches.map((match) => {
               const myItem =
                 match.item.owner_id === currentUserId;
+              const displayScore = aiReviews[match.id]?.score ?? match.score;
 
               return (
                 <article
@@ -566,29 +645,31 @@ export default function SmartMatchesPage() {
                     </span>
                     <span
                       className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-black ${getScoreStyle(
-                        match.score
+                        displayScore
                       )}`}
                     >
-                      {match.score}% match
+                      {aiReviews[match.id]
+                        ? "AI " + aiReviews[match.id].score + "% fit"
+                        : match.score + "% match"}
                     </span>
                   </div>
 
                   <div className="px-5 pt-4">
                     <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
-                      <span>{getMatchLabel(match.score)}</span>
-                      <span>{match.score}/100</span>
+                      <span>{getMatchLabel(displayScore)}</span>
+                      <span>{displayScore}/100</span>
                     </div>
                     <div
                       className="h-2 overflow-hidden rounded-full bg-gray-100"
                       role="progressbar"
                       aria-label="Match score"
-                      aria-valuenow={match.score}
+                      aria-valuenow={displayScore}
                       aria-valuemin={0}
                       aria-valuemax={100}
                     >
                       <div
                         className="h-full rounded-full bg-[#c63868] transition-all"
-                        style={{ width: `${match.score}%` }}
+                        style={{ width: displayScore + "%" }}
                       />
                     </div>
                   </div>
@@ -659,6 +740,13 @@ export default function SmartMatchesPage() {
                       )}
                     </div>
                   </div>
+
+                  {aiReviews[match.id]?.reason && (
+                    <div className="border-b border-violet-100 bg-violet-50 px-5 py-3 text-sm text-violet-950">
+                      ✨ AI review: {aiReviews[match.id].reason}
+                      <span className="mt-1 block text-xs text-violet-800/75">AI score is an estimate; check the listing details yourself.</span>
+                    </div>
+                  )}
 
                   <div className="px-5 pb-4">
                     <p className="text-xs font-bold text-gray-500">

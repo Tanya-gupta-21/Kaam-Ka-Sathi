@@ -209,7 +209,7 @@ export default function Home() {
       <section id="home" className="relative">
         <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-14 pt-12 md:px-8 md:pt-20 lg:grid-cols-[1.05fr_.95fr] lg:pb-20 lg:pt-24">
           {/* HERO TEXT */}
-          <div className="relative z-10">
+          <div className="relative z-10 motion-enter">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#d9e7d8] bg-[#edf5eb] px-4 py-2 text-sm font-bold text-[#356b45] shadow-sm">
               <span className="animate-pulse">●</span>
               A community built around sharing
@@ -257,7 +257,7 @@ export default function Home() {
           </div>
 
           {/* HERO VISUAL */}
-          <div className="relative mx-auto w-full max-w-xl">
+          <div className="relative mx-auto w-full max-w-xl motion-enter motion-delay-1">
             <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#dcebdc] blur-3xl md:h-96 md:w-96" />
 
             {/* MAIN CARD */}
@@ -267,7 +267,7 @@ export default function Home() {
 
                 <div className="absolute -bottom-16 -left-12 h-40 w-40 rounded-full bg-[#f5d7e1]" />
 
-                <div className="relative flex justify-center">
+          <div className="relative flex justify-center motion-enter">
                   <Image
                     src="/logo.png"
                     alt="Kaam Ka Saathi"
@@ -291,7 +291,7 @@ export default function Home() {
             </div>
 
             {/* FLOATING BOOK CARD */}
-            <div className="absolute -left-3 top-8 hidden animate-[bounce_4s_ease-in-out_infinite] rounded-2xl bg-white p-3 shadow-xl ring-1 ring-black/5 sm:block md:-left-8">
+            <div className="absolute -left-3 top-8 hidden soft-float rounded-2xl bg-white p-3 shadow-xl ring-1 ring-black/5 sm:block md:-left-8">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#edf5eb] text-2xl">
                   📚
@@ -305,7 +305,7 @@ export default function Home() {
             </div>
 
             {/* FLOATING CLOTHES CARD */}
-            <div className="absolute -right-3 top-20 hidden rounded-2xl bg-white p-3 shadow-xl ring-1 ring-black/5 sm:block md:-right-8">
+            <div className="absolute -right-3 top-20 hidden soft-float-delay rounded-2xl bg-white p-3 shadow-xl ring-1 ring-black/5 sm:block md:-right-8">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff0f4] text-2xl">
                   👕
@@ -435,7 +435,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <div className="motion-stagger mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {steps.map((step) => (
               <div
                 key={step.number}

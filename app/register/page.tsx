@@ -263,7 +263,7 @@ export default function RegisterPage() {
 
           <div className="relative rounded-2xl border border-white/15 bg-white/10 p-5">
             <p className="text-sm leading-6 text-green-50">
-              One person's unused item can become another person's everyday
+              One person&apos;s unused item can become another person&apos;s everyday
               essential.
             </p>
             <p className="mt-3 text-xs font-bold uppercase tracking-wider text-green-200">

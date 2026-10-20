@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 type Need = {
   id: string;
@@ -24,7 +25,7 @@ export default function NeedsPage() {
   const supabase = createClient();
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [needs, setNeeds] = useState<Need[]>([]);
   const [profiles, setProfiles] = useState<
     Record<string, Profile>
@@ -80,7 +81,7 @@ export default function NeedsPage() {
       // Fetch profiles
       const { data: profileData, error: profileError } =
         await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("id, full_name");
 
       if (profileError) {

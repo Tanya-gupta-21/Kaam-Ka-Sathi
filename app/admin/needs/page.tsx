@@ -44,10 +44,6 @@ export default function AdminNeedsPage() {
   const [category, setCategory] = useState("All");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadNeeds();
-  }, []);
-
   async function loadNeeds() {
     try {
       setLoading(true);
@@ -100,6 +96,12 @@ export default function AdminNeedsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadNeeds(), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function getUser(userId: string) {
     return profiles.find((profile) => profile.id === userId);

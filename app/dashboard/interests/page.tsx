@@ -30,6 +30,13 @@ type Interest = {
   profile: Profile | null;
 };
 
+type RawInterest = Pick<
+  Interest,
+  "id" | "item_id" | "interested_user_id" | "created_at"
+> & {
+  items: Interest["item"] | Interest["item"][];
+};
+
 export default function InterestsPage() {
   const supabase = createClient();
   const router = useRouter();
@@ -102,7 +109,7 @@ export default function InterestsPage() {
         return;
       }
 
-      const rawInterests = (data || []).map((interest: any) => ({
+      const rawInterests = ((data || []) as RawInterest[]).map((interest) => ({
         id: interest.id,
         item_id: interest.item_id,
         interested_user_id: interest.interested_user_id,
@@ -115,9 +122,7 @@ export default function InterestsPage() {
       // Get all interested user IDs
       const userIds = [
         ...new Set(
-          rawInterests.map(
-            (interest: any) => interest.interested_user_id
-          )
+          rawInterests.map((interest) => interest.interested_user_id)
         ),
       ];
 
@@ -125,7 +130,7 @@ export default function InterestsPage() {
 
       if (userIds.length > 0) {
         const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("id, full_name, city, locality, avatar_url")
           .in("id", userIds);
 
@@ -137,7 +142,7 @@ export default function InterestsPage() {
       }
 
       const formattedData: Interest[] = rawInterests.map(
-        (interest: any) => ({
+        (interest) => ({
           ...interest,
           profile:
             profiles.find(
@@ -408,7 +413,7 @@ export default function InterestsPage() {
             </h2>
 
             <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-gray-500">
-              When someone shows interest in an item you've listed, you'll
+              When someone shows interest in an item you&apos;ve listed, you&apos;ll
               see their profile and chat option right here.
             </p>
 

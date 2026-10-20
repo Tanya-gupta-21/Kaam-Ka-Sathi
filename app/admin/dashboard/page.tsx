@@ -13,6 +13,14 @@ type Stats = {
   helpOffers: number;
 };
 
+type RecentRecord = {
+  id: number;
+  title: string;
+  category: string | null;
+  city: string | null;
+  created_at: string;
+};
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -27,12 +35,8 @@ export default function AdminDashboardPage() {
     helpOffers: 0,
   });
 
-  const [recentItems, setRecentItems] = useState<any[]>([]);
-  const [recentNeeds, setRecentNeeds] = useState<any[]>([]);
-
-  useEffect(() => {
-    checkAdminAndLoadData();
-  }, []);
+  const [recentItems, setRecentItems] = useState<RecentRecord[]>([]);
+  const [recentNeeds, setRecentNeeds] = useState<RecentRecord[]>([]);
 
   async function checkAdminAndLoadData() {
     try {
@@ -175,6 +179,12 @@ export default function AdminDashboardPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void checkAdminAndLoadData(), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleLogout() {
     supabase.auth.signOut().then(() => {

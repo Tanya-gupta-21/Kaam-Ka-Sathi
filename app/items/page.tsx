@@ -15,6 +15,11 @@ type Item = {
   image_url?: string | null;
   created_at?: string;
   owner_id?: string;
+  listing_mode?: "give" | "sell" | "rent" | "lend" | null;
+  price?: number | null;
+  price_period?: string | null;
+  duration_days?: number | null;
+  security_deposit?: number | null;
 };
 
 const categories = [
@@ -28,6 +33,27 @@ const categories = [
   { name: "Household", icon: "🏠" },
 ];
 
+const modes = [
+  { key: "all", label: "All", icon: "✨" },
+  { key: "give", label: "Free", icon: "🎁" },
+  { key: "sell", label: "Sell", icon: "🛍️" },
+  { key: "rent", label: "Rent", icon: "📅" },
+  { key: "lend", label: "Lend", icon: "🤝" },
+];
+
+function priceLabel(item: Item) {
+  switch (item.listing_mode) {
+    case "sell":
+      return `₹${item.price ?? 0}`;
+    case "rent":
+      return `₹${item.price ?? 0}/${item.price_period ?? "day"}`;
+    case "lend":
+      return "Lend";
+    default:
+      return "Free";
+  }
+}
+
 export default function ItemsPage() {
   const supabase = createClient();
   const router = useRouter();
@@ -36,6 +62,8 @@ export default function ItemsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedMode, setSelectedMode] = useState("all");
+  const [searchText, setSearchText] = useState("");
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -53,9 +81,9 @@ export default function ItemsPage() {
     string | number | null
   >(null);
 
-  const [chatLoading, setChatLoading] = useState<
-    string | number | null
-  >(null);
+  const [chatLoading, setChatLoading] = useState<string | number | null>(
+    null
+  );
 
   const [deleteLoading, setDeleteLoading] = useState<
     string | number | null
@@ -80,18 +108,14 @@ export default function ItemsPage() {
       // -----------------------------
       // Check user's role
       // -----------------------------
-      const { data: profile, error: profileError } =
-        await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
 
       if (profileError) {
-        console.error(
-          "Profile loading error:",
-          profileError
-        );
+        console.error("Profile loading error:", profileError);
       }
 
       setIsAdmin(profile?.role === "admin");
@@ -107,10 +131,7 @@ export default function ItemsPage() {
         });
 
       if (error) {
-        console.error(
-          "Items loading error:",
-          error
-        );
+        console.error("Items loading error:", error);
 
         setMessage(error.message);
         setLoading(false);
@@ -122,54 +143,40 @@ export default function ItemsPage() {
       // -----------------------------
       // Load user's interests
       // -----------------------------
-      const { data: interests, error: interestError } =
-        await supabase
-          .from("interests")
-          .select("item_id")
-          .eq("interested_user_id", user.id);
+      const { data: interests, error: interestError } = await supabase
+        .from("interests")
+        .select("item_id")
+        .eq("interested_user_id", user.id);
 
       if (interestError) {
-        console.error(
-          "Interest loading error:",
-          interestError
-        );
+        console.error("Interest loading error:", interestError);
       }
 
       if (interests) {
-        setInterestedItems(
-          interests.map((item) => item.item_id)
-        );
+        setInterestedItems(interests.map((item) => item.item_id));
       }
 
       // -----------------------------
       // Load existing conversations
       // -----------------------------
-      const {
-        data: conversations,
-        error: conversationError,
-      } = await supabase
-        .from("conversations")
-        .select("id, item_id")
-        .eq("interested_user_id", user.id)
-        .not("item_id", "is", null);
+      const { data: conversations, error: conversationError } =
+        await supabase
+          .from("conversations")
+          .select("id, item_id")
+          .eq("interested_user_id", user.id)
+          .not("item_id", "is", null);
 
       if (conversationError) {
-        console.error(
-          "Conversation loading error:",
-          conversationError
-        );
+        console.error("Conversation loading error:", conversationError);
       }
 
       if (conversations) {
-        const conversationMap: Record<
-          string,
-          string
-        > = {};
+        const conversationMap: Record<string, string> = {};
 
         conversations.forEach((conversation) => {
-          conversationMap[
-            String(conversation.item_id)
-          ] = String(conversation.id);
+          conversationMap[String(conversation.item_id)] = String(
+            conversation.id
+          );
         });
 
         setConversationIds(conversationMap);
@@ -199,18 +206,14 @@ export default function ItemsPage() {
 
     // Cannot interact with own item
     if (item.owner_id === user.id) {
-      setMessage(
-        "You cannot show interest in your own item."
-      );
+      setMessage("You cannot show interest in your own item.");
 
       setInterestLoading(null);
       return;
     }
 
     if (!item.owner_id) {
-      setMessage(
-        "Owner information is not available."
-      );
+      setMessage("Owner information is not available.");
 
       setInterestLoading(null);
       return;
@@ -220,47 +223,35 @@ export default function ItemsPage() {
       // --------------------------------
       // 1. Check existing interest
       // --------------------------------
-      const {
-        data: existingInterest,
-        error: interestCheckError,
-      } = await supabase
-        .from("interests")
-        .select("id")
-        .eq("item_id", item.id)
-        .eq("interested_user_id", user.id)
-        .maybeSingle();
+      const { data: existingInterest, error: interestCheckError } =
+        await supabase
+          .from("interests")
+          .select("id")
+          .eq("item_id", item.id)
+          .eq("interested_user_id", user.id)
+          .maybeSingle();
 
       if (interestCheckError) {
-        console.error(
-          "Interest check error:",
-          interestCheckError
-        );
+        console.error("Interest check error:", interestCheckError);
       }
 
       // --------------------------------
       // 2. Create interest if needed
       // --------------------------------
       if (!existingInterest) {
-        const { error: interestError } =
-          await supabase
-            .from("interests")
-            .insert({
-              item_id: item.id,
-              interested_user_id: user.id,
-            });
+        const { error: interestError } = await supabase
+          .from("interests")
+          .insert({
+            item_id: item.id,
+            interested_user_id: user.id,
+          });
 
         if (interestError) {
           // Duplicate interest
           if (interestError.code !== "23505") {
-            console.error(
-              "Interest error:",
-              interestError
-            );
+            console.error("Interest error:", interestError);
 
-            setMessage(
-              interestError.message ||
-                "Unable to send interest."
-            );
+            setMessage(interestError.message || "Unable to send interest.");
 
             return;
           }
@@ -269,74 +260,55 @@ export default function ItemsPage() {
 
       // Update UI
       setInterestedItems((prev) =>
-        prev.includes(item.id)
-          ? prev
-          : [...prev, item.id]
+        prev.includes(item.id) ? prev : [...prev, item.id]
       );
 
       // --------------------------------
       // 3. Find existing conversation
       // --------------------------------
-      const {
-        data: existingConversation,
-        error: conversationCheckError,
-      } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("item_id", item.id)
-        .eq("interested_user_id", user.id)
-        .maybeSingle();
+      const { data: existingConversation, error: conversationCheckError } =
+        await supabase
+          .from("conversations")
+          .select("id")
+          .eq("item_id", item.id)
+          .eq("interested_user_id", user.id)
+          .maybeSingle();
 
       if (conversationCheckError) {
-        console.error(
-          "Conversation check error:",
-          conversationCheckError
-        );
+        console.error("Conversation check error:", conversationCheckError);
       }
 
-      let conversationId =
-        existingConversation?.id
-          ? String(existingConversation.id)
-          : null;
+      let conversationId = existingConversation?.id
+        ? String(existingConversation.id)
+        : null;
 
       // --------------------------------
       // 4. Create conversation
       // --------------------------------
       if (!conversationId) {
-        const {
-          data: newConversation,
-          error: conversationError,
-        } = await supabase
-          .from("conversations")
-          .insert({
-            item_id: item.id,
-            owner_id: item.owner_id,
-            interested_user_id: user.id,
-          })
-          .select("id")
-          .single();
+        const { data: newConversation, error: conversationError } =
+          await supabase
+            .from("conversations")
+            .insert({
+              item_id: item.id,
+              owner_id: item.owner_id,
+              interested_user_id: user.id,
+            })
+            .select("id")
+            .single();
 
         if (conversationError) {
           // Conversation may already exist
-          if (
-            conversationError.code === "23505"
-          ) {
-            const {
-              data: duplicateConversation,
-            } = await supabase
+          if (conversationError.code === "23505") {
+            const { data: duplicateConversation } = await supabase
               .from("conversations")
               .select("id")
               .eq("item_id", item.id)
-              .eq(
-                "interested_user_id",
-                user.id
-              )
+              .eq("interested_user_id", user.id)
               .maybeSingle();
 
             if (duplicateConversation) {
-              conversationId = String(
-                duplicateConversation.id
-              );
+              conversationId = String(duplicateConversation.id);
             }
           } else {
             console.error(
@@ -345,16 +317,13 @@ export default function ItemsPage() {
             );
 
             setMessage(
-              conversationError.message ||
-                "Unable to start chat."
+              conversationError.message || "Unable to start chat."
             );
 
             return;
           }
         } else if (newConversation) {
-          conversationId = String(
-            newConversation.id
-          );
+          conversationId = String(newConversation.id);
         }
       }
 
@@ -370,25 +339,16 @@ export default function ItemsPage() {
         // --------------------------------
         // 6. DIRECTLY OPEN CHAT
         // --------------------------------
-        router.push(
-          `/chat/${conversationId}`
-        );
+        router.push(`/chat/${conversationId}`);
 
         return;
       }
 
-      setMessage(
-        "Interest sent, but chat could not be opened."
-      );
+      setMessage("Interest sent, but chat could not be opened.");
     } catch (error) {
-      console.error(
-        "Interest/chat error:",
-        error
-      );
+      console.error("Interest/chat error:", error);
 
-      setMessage(
-        "Something went wrong. Please try again."
-      );
+      setMessage("Something went wrong. Please try again.");
     } finally {
       setInterestLoading(null);
     }
@@ -411,18 +371,14 @@ export default function ItemsPage() {
     }
 
     if (!item.owner_id) {
-      setMessage(
-        "Owner information is not available."
-      );
+      setMessage("Owner information is not available.");
 
       setChatLoading(null);
       return;
     }
 
     if (item.owner_id === user.id) {
-      setMessage(
-        "You cannot message yourself."
-      );
+      setMessage("You cannot message yourself.");
 
       setChatLoading(null);
       return;
@@ -432,13 +388,10 @@ export default function ItemsPage() {
       // --------------------------------
       // 1. Existing conversation
       // --------------------------------
-      const existingConversationId =
-        conversationIds[String(item.id)];
+      const existingConversationId = conversationIds[String(item.id)];
 
       if (existingConversationId) {
-        router.push(
-          `/chat/${existingConversationId}`
-        );
+        router.push(`/chat/${existingConversationId}`);
 
         return;
       }
@@ -446,25 +399,18 @@ export default function ItemsPage() {
       // --------------------------------
       // 2. Make sure interest exists
       // --------------------------------
-      const {
-        data: existingInterest,
-        error: interestError,
-      } = await supabase
-        .from("interests")
-        .select("id")
-        .eq("item_id", item.id)
-        .eq("interested_user_id", user.id)
-        .maybeSingle();
+      const { data: existingInterest, error: interestError } =
+        await supabase
+          .from("interests")
+          .select("id")
+          .eq("item_id", item.id)
+          .eq("interested_user_id", user.id)
+          .maybeSingle();
 
       if (interestError) {
-        console.error(
-          "Interest check error:",
-          interestError
-        );
+        console.error("Interest check error:", interestError);
 
-        setMessage(
-          interestError.message
-        );
+        setMessage(interestError.message);
 
         return;
       }
@@ -480,9 +426,7 @@ export default function ItemsPage() {
       // --------------------------------
       // 3. Find conversation again
       // --------------------------------
-      const {
-        data: existingConversation,
-      } = await supabase
+      const { data: existingConversation } = await supabase
         .from("conversations")
         .select("id")
         .eq("item_id", item.id)
@@ -490,9 +434,7 @@ export default function ItemsPage() {
         .maybeSingle();
 
       if (existingConversation) {
-        const id = String(
-          existingConversation.id
-        );
+        const id = String(existingConversation.id);
 
         setConversationIds((prev) => ({
           ...prev,
@@ -507,40 +449,29 @@ export default function ItemsPage() {
       // --------------------------------
       // 4. Create conversation
       // --------------------------------
-      const {
-        data: conversation,
-        error: conversationError,
-      } = await supabase
-        .from("conversations")
-        .insert({
-          item_id: item.id,
-          owner_id: item.owner_id,
-          interested_user_id: user.id,
-        })
-        .select("id")
-        .single();
+      const { data: conversation, error: conversationError } =
+        await supabase
+          .from("conversations")
+          .insert({
+            item_id: item.id,
+            owner_id: item.owner_id,
+            interested_user_id: user.id,
+          })
+          .select("id")
+          .single();
 
       if (conversationError) {
         // Duplicate conversation
-        if (
-          conversationError.code === "23505"
-        ) {
-          const {
-            data: duplicateConversation,
-          } = await supabase
+        if (conversationError.code === "23505") {
+          const { data: duplicateConversation } = await supabase
             .from("conversations")
             .select("id")
             .eq("item_id", item.id)
-            .eq(
-              "interested_user_id",
-              user.id
-            )
+            .eq("interested_user_id", user.id)
             .maybeSingle();
 
           if (duplicateConversation) {
-            const id = String(
-              duplicateConversation.id
-            );
+            const id = String(duplicateConversation.id);
 
             setConversationIds((prev) => ({
               ...prev,
@@ -553,10 +484,7 @@ export default function ItemsPage() {
           }
         }
 
-        console.error(
-          "Conversation creation error:",
-          conversationError
-        );
+        console.error("Conversation creation error:", conversationError);
 
         setMessage(
           conversationError.message ||
@@ -567,9 +495,7 @@ export default function ItemsPage() {
       }
 
       if (conversation) {
-        const id = String(
-          conversation.id
-        );
+        const id = String(conversation.id);
 
         setConversationIds((prev) => ({
           ...prev,
@@ -581,14 +507,9 @@ export default function ItemsPage() {
         return;
       }
     } catch (error) {
-      console.error(
-        "Chat error:",
-        error
-      );
+      console.error("Chat error:", error);
 
-      setMessage(
-        "Something went wrong. Please try again."
-      );
+      setMessage("Something went wrong. Please try again.");
     } finally {
       setChatLoading(null);
     }
@@ -603,13 +524,10 @@ export default function ItemsPage() {
       return;
     }
 
-    const isOwner =
-      item.owner_id === currentUserId;
+    const isOwner = item.owner_id === currentUserId;
 
     if (!isOwner && !isAdmin) {
-      setMessage(
-        "You are not allowed to delete this item."
-      );
+      setMessage("You are not allowed to delete this item.");
 
       return;
     }
@@ -623,38 +541,22 @@ export default function ItemsPage() {
     setDeleteLoading(item.id);
     setMessage("");
 
-    const { error } = await supabase
-      .from("items")
-      .delete()
-      .eq("id", item.id);
+    const { error } = await supabase.from("items").delete().eq("id", item.id);
 
     if (error) {
-      console.error(
-        "Delete item error:",
-        error
-      );
+      console.error("Delete item error:", error);
 
       setMessage(
-        error.message ||
-          "Unable to delete this item. Please try again."
+        error.message || "Unable to delete this item. Please try again."
       );
 
       setDeleteLoading(null);
       return;
     }
 
-    setItems((prev) =>
-      prev.filter(
-        (existing) =>
-          existing.id !== item.id
-      )
-    );
+    setItems((prev) => prev.filter((existing) => existing.id !== item.id));
 
-    setInterestedItems((prev) =>
-      prev.filter(
-        (id) => id !== item.id
-      )
-    );
+    setInterestedItems((prev) => prev.filter((id) => id !== item.id));
 
     setConversationIds((prev) => {
       const updated = { ...prev };
@@ -664,17 +566,13 @@ export default function ItemsPage() {
       return updated;
     });
 
-    setMessage(
-      `"${item.title}" has been deleted successfully. 🗑️`
-    );
+    setMessage(`"${item.title}" has been deleted successfully. 🗑️`);
 
     setDeleteLoading(null);
   }
 
   function getCategoryIcon(category: string) {
-    const found = categories.find(
-      (cat) => cat.name === category
-    );
+    const found = categories.find((cat) => cat.name === category);
 
     return found?.icon || "📦";
   }
@@ -682,24 +580,37 @@ export default function ItemsPage() {
   function formatDate(date?: string) {
     if (!date) return "Recently shared";
 
-    return new Date(date).toLocaleDateString(
-      "en-IN",
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }
-    );
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   }
 
-  const filteredItems =
-    selectedCategory === "All"
-      ? items
-      : items.filter(
-          (item) =>
-            item.category ===
-            selectedCategory
-        );
+  function resetFilters() {
+    setSelectedCategory("All");
+    setSelectedMode("all");
+    setSearchText("");
+  }
+
+  const query = searchText.trim().toLowerCase();
+
+  const filteredItems = items.filter((item) => {
+    const categoryOk =
+      selectedCategory === "All" || item.category === selectedCategory;
+
+    const modeOk =
+      selectedMode === "all" || (item.listing_mode ?? "give") === selectedMode;
+
+    const searchOk =
+      !query ||
+      [item.title, item.description, item.category, item.locality, item.city]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+
+    return categoryOk && modeOk && searchOk;
+  });
 
   return (
     <main className="min-h-screen bg-[#f7f8f4] text-[#193326]">
@@ -707,9 +618,7 @@ export default function ItemsPage() {
       <nav className="sticky top-0 z-50 border-b border-[#e8e5dd] bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <button
-            onClick={() =>
-              router.push("/dashboard")
-            }
+            onClick={() => router.push("/dashboard")}
             className="group text-left"
           >
             <div className="flex items-center gap-2">
@@ -731,18 +640,14 @@ export default function ItemsPage() {
 
           <div className="flex items-center gap-2 md:gap-3">
             <button
-              onClick={() =>
-                router.push("/dashboard")
-              }
+              onClick={() => router.push("/dashboard")}
               className="rounded-xl px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-[#f1eee6] hover:text-[#173d29] md:px-4"
             >
               Dashboard
             </button>
 
             <button
-              onClick={() =>
-                router.push("/items/new")
-              }
+              onClick={() => router.push("/items/new")}
               className="rounded-xl bg-[#c63868] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-[#a92e57] hover:shadow-lg md:px-5"
             >
               <span className="mr-1">+</span>
@@ -769,9 +674,7 @@ export default function ItemsPage() {
               <h2 className="max-w-4xl text-4xl font-black leading-[1.05] tracking-tight text-[#173d29] md:text-6xl">
                 Find something useful.
                 <br />
-                <span className="text-[#c63868]">
-                  Give it a new home.
-                </span>
+                <span className="text-[#c63868]">Give it a new home.</span>
               </h2>
 
               <p className="mt-6 max-w-2xl text-base leading-7 text-gray-600 md:text-lg">
@@ -782,18 +685,14 @@ export default function ItemsPage() {
 
               <div className="mt-7 flex flex-wrap gap-3">
                 <button
-                  onClick={() =>
-                    router.push("/items/new")
-                  }
+                  onClick={() => router.push("/items/new")}
                   className="rounded-2xl bg-[#173d29] px-6 py-3.5 font-bold text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#24573b] hover:shadow-xl"
                 >
                   + Share an Item
                 </button>
 
                 <button
-                  onClick={() =>
-                    router.push("/needs")
-                  }
+                  onClick={() => router.push("/needs")}
                   className="rounded-2xl border border-[#d9d6ce] bg-white px-6 py-3.5 font-bold text-[#173d29] shadow-sm transition duration-300 hover:-translate-y-1 hover:bg-[#f1eee6]"
                 >
                   See Community Needs →
@@ -816,16 +715,12 @@ export default function ItemsPage() {
                       </p>
                     </div>
 
-                    <div className="text-4xl">
-                      🤝
-                    </div>
+                    <div className="text-4xl">🤝</div>
                   </div>
 
                   <div className="mt-8 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                      <p className="text-2xl font-black">
-                        {items.length}
-                      </p>
+                      <p className="text-2xl font-black">{items.length}</p>
 
                       <p className="mt-1 text-xs text-[#cfe2d1]">
                         Items listed
@@ -833,13 +728,9 @@ export default function ItemsPage() {
                     </div>
 
                     <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-                      <p className="text-2xl font-black">
-                        ♻️
-                      </p>
+                      <p className="text-2xl font-black">♻️</p>
 
-                      <p className="mt-1 text-xs text-[#cfe2d1]">
-                        Less waste
-                      </p>
+                      <p className="mt-1 text-xs text-[#cfe2d1]">Less waste</p>
                     </div>
                   </div>
                 </div>
@@ -853,7 +744,7 @@ export default function ItemsPage() {
         </div>
       </section>
 
-      {/* CATEGORY FILTER */}
+      {/* SEARCH + FILTERS */}
       <section className="mx-auto max-w-7xl px-5 md:px-8">
         <div className="rounded-[2rem] border border-[#e8e5dd] bg-white p-5 shadow-sm md:p-7">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -863,24 +754,45 @@ export default function ItemsPage() {
               </p>
 
               <h3 className="mt-1 text-2xl font-black text-[#173d29]">
-                Browse by category
+                Search & browse
               </h3>
             </div>
 
             <p className="text-sm text-gray-500">
               {filteredItems.length}{" "}
-              {filteredItems.length === 1
-                ? "item"
-                : "items"}{" "}
-              showing
+              {filteredItems.length === 1 ? "item" : "items"} showing
             </p>
           </div>
 
+          {/* SEARCH */}
+          <input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="🔍 Search books, clothes, area, city..."
+            className="mt-5 w-full rounded-2xl border border-[#e8e5dd] bg-[#f7f8f4] px-5 py-3.5 text-sm outline-none transition focus:border-[#173d29] focus:ring-4 focus:ring-[#173d29]/10"
+          />
+
+          {/* MODE TABS */}
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {modes.map((mode) => (
+              <button
+                key={mode.key}
+                onClick={() => setSelectedMode(mode.key)}
+                className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-bold transition ${
+                  selectedMode === mode.key
+                    ? "bg-[#173d29] text-white shadow-md"
+                    : "bg-[#f5f3ed] text-gray-600 hover:bg-[#e9eee7]"
+                }`}
+              >
+                {mode.icon} {mode.label}
+              </button>
+            ))}
+          </div>
+
+          {/* CATEGORY FILTER */}
           <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
             <button
-              onClick={() =>
-                setSelectedCategory("All")
-              }
+              onClick={() => setSelectedCategory("All")}
               className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-bold transition duration-300 ${
                 selectedCategory === "All"
                   ? "bg-[#173d29] text-white shadow-md"
@@ -893,20 +805,14 @@ export default function ItemsPage() {
             {categories.map((category) => (
               <button
                 key={category.name}
-                onClick={() =>
-                  setSelectedCategory(
-                    category.name
-                  )
-                }
+                onClick={() => setSelectedCategory(category.name)}
                 className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-bold transition duration-300 ${
-                  selectedCategory ===
-                  category.name
+                  selectedCategory === category.name
                     ? "bg-[#c63868] text-white shadow-md"
                     : "bg-[#f5f3ed] text-gray-600 hover:bg-[#f0e5e9]"
                 }`}
               >
-                {category.icon}{" "}
-                {category.name}
+                {category.icon} {category.name}
               </button>
             ))}
           </div>
@@ -917,9 +823,7 @@ export default function ItemsPage() {
       {message && (
         <div className="mx-auto max-w-7xl px-5 pt-7 md:px-8">
           <div className="flex items-start gap-3 rounded-2xl border border-[#dcebdc] bg-[#f1f8ef] p-4 text-sm font-semibold text-[#356b45] shadow-sm">
-            <span className="text-lg">
-              💚
-            </span>
+            <span className="text-lg">💚</span>
 
             <span>{message}</span>
           </div>
@@ -942,70 +846,62 @@ export default function ItemsPage() {
       )}
 
       {/* ERROR */}
-      {!loading &&
-        message &&
-        items.length === 0 && (
-          <section className="mx-auto max-w-3xl px-5 py-16 md:px-8">
-            <div className="rounded-[2rem] border border-[#ece9e1] bg-white p-10 text-center shadow-lg">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#f8e7ec] text-4xl">
-                ⚠️
-              </div>
-
-              <h3 className="mt-6 text-2xl font-black text-[#173d29]">
-                Something went wrong
-              </h3>
-
-              <p className="mt-2 text-gray-600">
-                We couldn't load the items right now. Please refresh and try
-                again.
-              </p>
-
-              <button
-                onClick={() =>
-                  window.location.reload()
-                }
-                className="mt-6 rounded-xl bg-[#173d29] px-6 py-3 font-bold text-white transition hover:bg-[#24573b]"
-              >
-                Try Again
-              </button>
+      {!loading && message && items.length === 0 && (
+        <section className="mx-auto max-w-3xl px-5 py-16 md:px-8">
+          <div className="rounded-[2rem] border border-[#ece9e1] bg-white p-10 text-center shadow-lg">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#f8e7ec] text-4xl">
+              ⚠️
             </div>
-          </section>
-        )}
+
+            <h3 className="mt-6 text-2xl font-black text-[#173d29]">
+              Something went wrong
+            </h3>
+
+            <p className="mt-2 text-gray-600">
+              We couldn&apos;t load the items right now. Please refresh and try
+              again.
+            </p>
+
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 rounded-xl bg-[#173d29] px-6 py-3 font-bold text-white transition hover:bg-[#24573b]"
+            >
+              Try Again
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* EMPTY */}
-      {!loading &&
-        !message &&
-        items.length === 0 && (
-          <section className="mx-auto max-w-3xl px-5 py-16 md:px-8">
-            <div className="overflow-hidden rounded-[2.5rem] border border-[#e8e5dd] bg-white p-10 text-center shadow-lg md:p-14">
-              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#f1eee6] text-5xl">
-                📦
-              </div>
-
-              <p className="mt-7 text-xs font-black tracking-[0.2em] text-[#c63868]">
-                BE THE FIRST
-              </p>
-
-              <h3 className="mt-2 text-3xl font-black text-[#173d29]">
-                No items yet
-              </h3>
-
-              <p className="mx-auto mt-3 max-w-md leading-6 text-gray-600">
-                Your community is waiting for its first useful share. List
-                something you no longer need and give it another chance.
-              </p>
-
-              <button
-                onClick={() =>
-                  router.push("/items/new")
-                }
-                className="mt-7 rounded-2xl bg-[#173d29] px-7 py-3.5 font-bold text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#24573b]"
-              >
-                + List the First Item
-              </button>
+      {!loading && !message && items.length === 0 && (
+        <section className="mx-auto max-w-3xl px-5 py-16 md:px-8">
+          <div className="overflow-hidden rounded-[2.5rem] border border-[#e8e5dd] bg-white p-10 text-center shadow-lg md:p-14">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#f1eee6] text-5xl">
+              📦
             </div>
-          </section>
-        )}
+
+            <p className="mt-7 text-xs font-black tracking-[0.2em] text-[#c63868]">
+              BE THE FIRST
+            </p>
+
+            <h3 className="mt-2 text-3xl font-black text-[#173d29]">
+              No items yet
+            </h3>
+
+            <p className="mx-auto mt-3 max-w-md leading-6 text-gray-600">
+              Your community is waiting for its first useful share. List
+              something you no longer need and give it another chance.
+            </p>
+
+            <button
+              onClick={() => router.push("/items/new")}
+              className="mt-7 rounded-2xl bg-[#173d29] px-7 py-3.5 font-bold text-white shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#24573b]"
+            >
+              + List the First Item
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* ITEMS */}
       {!loading && items.length > 0 && (
@@ -1028,269 +924,208 @@ export default function ItemsPage() {
 
           {filteredItems.length === 0 ? (
             <div className="rounded-[2rem] border border-[#e8e5dd] bg-white p-12 text-center shadow-sm">
-              <div className="text-5xl">
-                🔎
-              </div>
+              <div className="text-5xl">🔎</div>
 
               <h3 className="mt-4 text-xl font-black text-[#173d29]">
-                No items in this category
+                No items found
               </h3>
 
               <p className="mt-2 text-gray-500">
-                Try another category to discover more items.
+                Try another category, tab or search to discover more items.
               </p>
 
               <button
-                onClick={() =>
-                  setSelectedCategory("All")
-                }
+                onClick={resetFilters}
                 className="mt-5 rounded-xl bg-[#173d29] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#24573b]"
               >
                 View All Items
               </button>
             </div>
           ) : (
-            <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredItems.map(
-                (item, index) => {
-                  const isInterested =
-                    interestedItems.includes(
-                      item.id
-                    );
+            <div className="motion-stagger grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredItems.map((item, index) => {
+                const isInterested = interestedItems.includes(item.id);
 
-                  const isInterestLoading =
-                    interestLoading === item.id;
+                const isInterestLoading = interestLoading === item.id;
 
-                  const isChatLoading =
-                    chatLoading === item.id;
+                const isChatLoading = chatLoading === item.id;
 
-                  const isDeleteLoading =
-                    deleteLoading === item.id;
+                const isDeleteLoading = deleteLoading === item.id;
 
-                  const isOwner =
-                    item.owner_id ===
-                    currentUserId;
+                const isOwner = item.owner_id === currentUserId;
 
-                  const canDelete =
-                    isOwner || isAdmin;
+                const canDelete = isOwner || isAdmin;
 
-                  const conversationId =
-                    conversationIds[
-                      String(item.id)
-                    ];
+                const conversationId = conversationIds[String(item.id)];
 
-                  return (
-                    <article
-                      key={item.id}
-                      className="group overflow-hidden rounded-[2rem] border border-[#e8e5dd] bg-white shadow-sm transition duration-500 hover:-translate-y-2 hover:shadow-2xl"
-                      style={{
-                        animationDelay: `${
-                          index * 80
-                        }ms`,
-                      }}
-                    >
-                      {/* IMAGE */}
-                      <div className="relative h-64 overflow-hidden bg-[#f1eee6]">
-                        {item.image_url ? (
-                          <img
-                            src={
-                              item.image_url
-                            }
-                            alt={
-                              item.title
-                            }
-                            className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
-                          />
-                        ) : (
-                          <div className="flex h-full flex-col items-center justify-center">
-                            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/80 text-5xl shadow-sm transition duration-500 group-hover:scale-110">
-                              {getCategoryIcon(
-                                item.category
-                              )}
-                            </div>
-
-                            <p className="mt-3 text-xs font-semibold text-gray-500">
-                              No photo available
-                            </p>
+                return (
+                  <article
+                    key={item.id}
+                    className="motion-enter group overflow-hidden rounded-[2rem] border border-[#e8e5dd] bg-white shadow-sm transition duration-500 hover:-translate-y-2 hover:shadow-2xl"
+                    style={{
+                      animationDelay: `${Math.min(index, 8) * 60}ms`,
+                    }}
+                  >
+                    {/* IMAGE */}
+                    <div className="relative h-64 overflow-hidden bg-[#f1eee6]">
+                      {item.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.image_url}
+                          alt={item.title}
+                          className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center">
+                          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/80 text-5xl shadow-sm transition duration-500 group-hover:scale-110">
+                            {getCategoryIcon(item.category)}
                           </div>
-                        )}
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#173d29]/35 via-transparent to-transparent opacity-60" />
+                          <p className="mt-3 text-xs font-semibold text-gray-500">
+                            No photo available
+                          </p>
+                        </div>
+                      )}
 
-                        {/* Category */}
-                        <span className="absolute left-4 top-4 rounded-full bg-[#173d29]/95 px-3.5 py-2 text-xs font-bold text-white shadow-lg backdrop-blur">
-                          {getCategoryIcon(
-                            item.category
-                          )}{" "}
-                          {item.category}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#173d29]/35 via-transparent to-transparent opacity-60" />
+
+                      {/* Category */}
+                      <span className="absolute left-4 top-4 rounded-full bg-[#173d29]/95 px-3.5 py-2 text-xs font-bold text-white shadow-lg backdrop-blur">
+                        {getCategoryIcon(item.category)} {item.category}
+                      </span>
+
+                      {/* Condition */}
+                      <span className="absolute right-4 top-4 rounded-full bg-white/95 px-3.5 py-2 text-xs font-black text-[#356b45] shadow-lg">
+                        {item.condition}
+                      </span>
+
+                      {/* Owner/Admin badge */}
+                      {canDelete && (
+                        <span className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1.5 text-xs font-black text-[#173d29] shadow-lg backdrop-blur">
+                          {isAdmin && !isOwner ? "🛡️ Admin" : "👤 Your Item"}
                         </span>
+                      )}
 
-                        {/* Condition */}
-                        <span className="absolute right-4 top-4 rounded-full bg-white/95 px-3.5 py-2 text-xs font-black text-[#356b45] shadow-lg">
-                          {item.condition}
-                        </span>
+                      {/* Price / mode badge */}
+                      <span className="absolute bottom-4 right-4 rounded-full bg-[#c63868] px-3 py-1.5 text-xs font-black text-white shadow-lg">
+                        {priceLabel(item)}
+                      </span>
+                    </div>
 
-                        {/* Owner/Admin badge */}
-                        {canDelete && (
-                          <span className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1.5 text-xs font-black text-[#173d29] shadow-lg backdrop-blur">
-                            {isAdmin &&
-                            !isOwner
-                              ? "🛡️ Admin"
-                              : "👤 Your Item"}
-                          </span>
-                        )}
+                    {/* CONTENT */}
+                    <div className="p-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <h4 className="text-xl font-black leading-tight text-[#173d29] transition group-hover:text-[#c63868]">
+                          {item.title}
+                        </h4>
+
+                        <span className="shrink-0 text-lg opacity-70">♻️</span>
                       </div>
 
-                      {/* CONTENT */}
-                      <div className="p-6">
-                        <div className="flex items-start justify-between gap-3">
-                          <h4 className="text-xl font-black leading-tight text-[#173d29] transition group-hover:text-[#c63868]">
-                            {item.title}
-                          </h4>
+                      <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600">
+                        {item.description}
+                      </p>
 
-                          <span className="shrink-0 text-lg opacity-70">
-                            ♻️
-                          </span>
+                      {/* Location */}
+                      <div className="mt-5 flex items-center gap-3 rounded-2xl bg-[#f7f8f4] p-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+                          📍
                         </div>
 
-                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600">
-                          {item.description}
-                        </p>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-[#173d29]">
+                            {item.locality}, {item.city}
+                          </p>
 
-                        {/* Location */}
-                        <div className="mt-5 flex items-center gap-3 rounded-2xl bg-[#f7f8f4] p-4">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
-                            📍
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-[#173d29]">
-                              {item.locality},{" "}
-                              {item.city}
-                            </p>
-
-                            <p className="mt-0.5 text-xs text-gray-500">
-                              Community location
-                            </p>
-                          </div>
+                          <p className="mt-0.5 text-xs text-gray-500">
+                            Community location
+                          </p>
                         </div>
+                      </div>
 
-                        {/* Date */}
-                        <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
-                          <span>
-                            🕒{" "}
-                            {formatDate(
-                              item.created_at
-                            )}
-                          </span>
+                      {/* Date */}
+                      <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
+                        <span>🕒 {formatDate(item.created_at)}</span>
 
-                          <span className="font-semibold text-[#356b45]">
-                            Community Share
-                          </span>
-                        </div>
+                        <span className="font-semibold text-[#356b45]">
+                          Community Share
+                        </span>
+                      </div>
 
-                        {/* INTEREST / CHAT */}
-                        {!isOwner && (
-                          <>
-                            {!isInterested ? (
+                      {/* INTEREST / CHAT */}
+                      {!isOwner && (
+                        <>
+                          {!isInterested ? (
+                            <button
+                              onClick={() => handleInterest(item)}
+                              disabled={isInterestLoading}
+                              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#173d29] py-3.5 font-black text-white shadow-md transition duration-300 hover:-translate-y-0.5 hover:bg-[#24573b] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isInterestLoading ? (
+                                <>
+                                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                  Opening chat...
+                                </>
+                              ) : (
+                                <>❤️ I&apos;m Interested</>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="mt-5 space-y-2">
+                              <div className="flex items-center justify-center gap-2 rounded-2xl bg-[#e9f1e5] py-3 text-sm font-black text-[#356b45]">
+                                ✓ Interest Sent
+                              </div>
+
                               <button
-                                onClick={() =>
-                                  handleInterest(
-                                    item
-                                  )
-                                }
-                                disabled={
-                                  isInterestLoading
-                                }
-                                className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#173d29] py-3.5 font-black text-white shadow-md transition duration-300 hover:-translate-y-0.5 hover:bg-[#24573b] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                                onClick={() => handleChat(item)}
+                                disabled={isChatLoading}
+                                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#c63868] py-3.5 font-black text-white shadow-md transition duration-300 hover:-translate-y-0.5 hover:bg-[#a92e57] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
                               >
-                                {isInterestLoading ? (
+                                {isChatLoading ? (
                                   <>
                                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-
                                     Opening chat...
                                   </>
                                 ) : (
-                                  <>
-                                    ❤️ I'm Interested
-                                  </>
+                                  <>💬 Message Owner</>
                                 )}
                               </button>
-                            ) : (
-                              <div className="mt-5 space-y-2">
-                                <div className="flex items-center justify-center gap-2 rounded-2xl bg-[#e9f1e5] py-3 text-sm font-black text-[#356b45]">
-                                  ✓ Interest Sent
-                                </div>
 
-                                <button
-                                  onClick={() =>
-                                    handleChat(
-                                      item
-                                    )
-                                  }
-                                  disabled={
-                                    isChatLoading
-                                  }
-                                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#c63868] py-3.5 font-black text-white shadow-md transition duration-300 hover:-translate-y-0.5 hover:bg-[#a92e57] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  {isChatLoading ? (
-                                    <>
-                                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                              {conversationId && (
+                                <p className="text-center text-xs font-semibold text-gray-400">
+                                  💚 Chat is ready
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
 
-                                      Opening chat...
-                                    </>
-                                  ) : (
-                                    <>
-                                      💬 Message Owner
-                                    </>
-                                  )}
-                                </button>
-
-                                {conversationId && (
-                                  <p className="text-center text-xs font-semibold text-gray-400">
-                                    💚 Chat is ready
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        {/* OWNER / ADMIN DELETE */}
-                        {canDelete && (
-                          <button
-                            onClick={() =>
-                              handleDelete(
-                                item
-                              )
-                            }
-                            disabled={
-                              isDeleteLoading
-                            }
-                            className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border py-3 font-black transition duration-300 ${
-                              isDeleteLoading
-                                ? "cursor-not-allowed border-red-100 bg-red-50 text-red-300"
-                                : "border-red-200 bg-white text-red-600 hover:-translate-y-0.5 hover:bg-red-50 hover:shadow-md"
-                            }`}
-                          >
-                            {isDeleteLoading ? (
-                              <>
-                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-t-red-500" />
-
-                                Deleting...
-                              </>
-                            ) : (
-                              <>
-                                🗑️ Delete Item
-                              </>
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  );
-                }
-              )}
+                      {/* OWNER / ADMIN DELETE */}
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(item)}
+                          disabled={isDeleteLoading}
+                          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border py-3 font-black transition duration-300 ${
+                            isDeleteLoading
+                              ? "cursor-not-allowed border-red-100 bg-red-50 text-red-300"
+                              : "border-red-200 bg-white text-red-600 hover:-translate-y-0.5 hover:bg-red-50 hover:shadow-md"
+                          }`}
+                        >
+                          {isDeleteLoading ? (
+                            <>
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-t-red-500" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>🗑️ Delete Item</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
@@ -1311,7 +1146,7 @@ export default function ItemsPage() {
                 </p>
 
                 <h3 className="mt-2 max-w-2xl text-3xl font-black md:text-4xl">
-                  Someone nearby might need exactly what you don't.
+                  Someone nearby might need exactly what you don&apos;t.
                 </h3>
 
                 <p className="mt-3 max-w-xl leading-6 text-[#d1e2d3]">
@@ -1321,9 +1156,7 @@ export default function ItemsPage() {
               </div>
 
               <button
-                onClick={() =>
-                  router.push("/items/new")
-                }
+                onClick={() => router.push("/items/new")}
                 className="shrink-0 rounded-2xl bg-white px-7 py-3.5 font-black text-[#173d29] shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#f8f5ed]"
               >
                 + List an Item
@@ -1338,14 +1171,10 @@ export default function ItemsPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-7 text-sm text-gray-500 md:flex-row md:items-center md:justify-between md:px-8">
           <p>
             © {new Date().getFullYear()}{" "}
-            <span className="font-bold text-[#173d29]">
-              Kaam Ka Saathi
-            </span>
+            <span className="font-bold text-[#173d29]">Kaam Ka Saathi</span>
           </p>
 
-          <p>
-            ♻️ Share more. Waste less. Help each other.
-          </p>
+          <p>♻️ Share more. Waste less. Help each other.</p>
         </div>
       </footer>
     </main>

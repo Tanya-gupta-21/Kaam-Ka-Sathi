@@ -234,7 +234,7 @@ export default function MyItemsPage() {
               </div>
 
               <h2 className="max-w-3xl text-4xl font-black leading-[1.05] tracking-tight text-[#173d29] md:text-6xl">
-                Everything you've
+                Everything you&apos;ve
                 <br />
                 <span className="text-[#c63868]">
                   shared with others.
@@ -242,7 +242,7 @@ export default function MyItemsPage() {
               </h2>
 
               <p className="mt-6 max-w-2xl text-base leading-7 text-gray-600 md:text-lg">
-                Keep track of the useful things you've listed on
+                Keep track of the useful things you&apos;ve listed on
                 Kaam Ka Saathi and see how many people are interested.
               </p>
 
@@ -328,7 +328,7 @@ export default function MyItemsPage() {
             </p>
 
             <h3 className="mt-1 text-3xl font-black text-[#173d29] md:text-4xl">
-              Items you've listed
+              Items you&apos;ve listed
             </h3>
           </div>
 
@@ -349,7 +349,7 @@ export default function MyItemsPage() {
             </h3>
 
             <p className="mt-2 text-sm text-gray-500">
-              Fetching everything you've shared.
+              Fetching everything you&apos;ve shared.
             </p>
 
           </div>
@@ -368,7 +368,7 @@ export default function MyItemsPage() {
             </p>
 
             <h3 className="mt-2 text-3xl font-black text-[#173d29]">
-              You haven't listed anything
+              You haven&apos;t listed anything
             </h3>
 
             <p className="mx-auto mt-3 max-w-md leading-6 text-gray-600">
@@ -564,7 +564,7 @@ export default function MyItemsPage() {
                 </p>
 
                 <h3 className="mt-2 max-w-2xl text-3xl font-black md:text-4xl">
-                  Your unused things can become someone else's useful things.
+                  Your unused things can become someone else&apos;s useful things.
                 </h3>
 
                 <p className="mt-3 max-w-xl leading-6 text-[#d1e2d3]">

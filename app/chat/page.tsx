@@ -11,6 +11,7 @@ type Conversation = {
   interested_user_id: string;
   item_id: string | null;
   need_id: string | null;
+  service_id: string | null;
   created_at: string;
 };
 
@@ -94,7 +95,7 @@ export default function ChatsPage() {
           await supabase
             .from("conversations")
             .select(
-              "id, owner_id, interested_user_id, item_id, need_id, created_at"
+              "id, owner_id, interested_user_id, item_id, need_id, service_id, created_at"
             )
             .or(
               `owner_id.eq.${userId},interested_user_id.eq.${userId}`
@@ -121,7 +122,7 @@ export default function ChatsPage() {
             const [profileResult, messageResult, unreadResult] =
               await Promise.all([
                 supabase
-                  .from("profiles")
+                  .from("profiles_public")
                   .select("id, full_name")
                   .eq("id", otherUserId)
                   .maybeSingle(),

@@ -45,10 +45,6 @@ export default function AdminItemsPage() {
   const [category, setCategory] = useState("All");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadItems();
-  }, []);
-
   async function loadItems() {
     try {
       setLoading(true);
@@ -101,6 +97,12 @@ export default function AdminItemsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadItems(), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function getOwner(ownerId: string) {
     return profiles.find((profile) => profile.id === ownerId);

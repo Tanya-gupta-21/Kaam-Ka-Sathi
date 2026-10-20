@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import MemberCard from "@/components/MemberCard";
 
 type Need = {
   id: string;
@@ -204,7 +204,7 @@ export default function DashboardPage() {
 
       <div className="relative z-10">
         {/* HERO */}
-        <section className="mx-auto max-w-7xl px-5 pb-10 pt-7 md:px-8 md:pt-10">
+        <section className="mx-auto max-w-7xl px-5 pb-10 pt-7 motion-enter md:px-8 md:pt-10">
           <div className="relative overflow-hidden rounded-[2.5rem] bg-[#173d29] shadow-2xl">
             <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border-[50px] border-white/5" />
 
@@ -230,8 +230,8 @@ export default function DashboardPage() {
                 </h2>
 
                 <p className="mt-5 max-w-xl text-base leading-7 text-green-100 md:text-lg">
-                  Your unused things can become someone else's useful
-                  belongings. Let's make that connection happen.
+                  Your unused things can become someone else&apos;s useful
+                  belongings. Let&apos;s make that connection happen.
                 </p>
 
                 {/* HERO ACTION BUTTONS */}
@@ -257,12 +257,36 @@ export default function DashboardPage() {
                     💬 Messages
                   </button>
 
-                  {/* NEW: SMART MATCHES */}
+                  {/* SMART MATCHES */}
                   <button
                     onClick={() => router.push("/matches")}
                     className="rounded-2xl border border-white/20 bg-[#d9edc2] px-6 py-3.5 font-bold text-[#173d29] shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#c7e5a8] hover:shadow-xl"
                   >
                     ✨ Smart Matches
+                  </button>
+
+                  {/* SERVICES */}
+                  <button
+                    onClick={() => router.push("/services")}
+                    className="rounded-2xl border border-white/20 bg-[#f5b942] px-6 py-3.5 font-bold text-[#173d29] shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    🛠️ Services
+                  </button>
+
+                  {/* MY PROFILE */}
+                  <button
+                    onClick={() => router.push("/profile")}
+                    className="rounded-2xl border border-white/20 bg-white/10 px-6 py-3.5 font-bold text-white backdrop-blur transition duration-300 hover:-translate-y-1 hover:bg-white/20"
+                  >
+                    👤 My Profile
+                  </button>
+
+                  {/* HANDOVERS */}
+                  <button
+                    onClick={() => router.push("/handovers")}
+                    className="rounded-2xl border border-white/20 bg-[#d9edc2] px-6 py-3.5 font-bold text-[#173d29] shadow-lg transition duration-300 hover:-translate-y-1 hover:bg-[#c7e5a8] hover:shadow-xl"
+                  >
+                    🤝 Handovers
                   </button>
                 </div>
               </div>
@@ -312,6 +336,13 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* MEMBER CARD */}
+        <section className="mx-auto max-w-7xl px-5 pb-10 md:px-8">
+          <div className="flex justify-center md:justify-start">
+            <MemberCard />
           </div>
         </section>
 
@@ -378,7 +409,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="motion-stagger grid gap-5 md:grid-cols-3">
             {/* CARD 1 */}
             <button
               onClick={() => router.push("/items/new")}
@@ -438,7 +469,7 @@ export default function DashboardPage() {
                   </h4>
 
                   <p className="mt-3 text-sm leading-6 text-pink-100">
-                    Can't find something you need? Tell the community and let
+                    Can&apos;t find something you need? Tell the community and let
                     someone help.
                   </p>
                 </div>
@@ -500,7 +531,7 @@ export default function DashboardPage() {
                 </h3>
 
                 <p className="mt-2 max-w-xl text-gray-500">
-                  Useful things don't have to end up unused. Here's what
+                  Useful things don&apos;t have to end up unused. Here&apos;s what
                   sharing can look like.
                 </p>
               </div>
@@ -781,7 +812,7 @@ export default function DashboardPage() {
                 </span>
 
                 <h3 className="mt-6 text-3xl font-black md:text-5xl">
-                  One person's extra can be another person's need.
+                  One person&apos;s extra can be another person&apos;s need.
                 </h3>
 
                 <p className="mt-5 max-w-2xl leading-7 text-green-100">
@@ -886,7 +917,13 @@ export default function DashboardPage() {
                 My Needs
               </button>
 
-              {/* MESSAGES */}
+              <button
+                onClick={() => router.push("/services")}
+                className="font-semibold text-[#173d29] hover:text-[#c63868]"
+              >
+                🛠️ Services
+              </button>
+
               <button
                 onClick={() => router.push("/chat")}
                 className="font-semibold text-[#173d29] hover:text-[#c63868]"
@@ -894,12 +931,25 @@ export default function DashboardPage() {
                 💬 Messages
               </button>
 
-              {/* NEW: SMART MATCHES */}
               <button
                 onClick={() => router.push("/matches")}
                 className="font-semibold text-[#173d29] hover:text-[#c63868]"
               >
                 ✨ Smart Matches
+              </button>
+
+              <button
+                onClick={() => router.push("/handovers")}
+                className="font-semibold text-[#173d29] hover:text-[#c63868]"
+              >
+                🤝 Handovers
+              </button>
+
+              <button
+                onClick={() => router.push("/profile")}
+                className="font-semibold text-[#173d29] hover:text-[#c63868]"
+              >
+                👤 My Profile
               </button>
             </div>
           </div>

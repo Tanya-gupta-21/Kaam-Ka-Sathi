@@ -58,7 +58,8 @@ export default function NotificationsPage() {
   }, [router, supabase]);
 
   useEffect(() => {
-    void fetchNotifications();
+    const timer = window.setTimeout(() => void fetchNotifications(), 0);
+    return () => window.clearTimeout(timer);
   }, [fetchNotifications]);
 
   async function openNotification(notification: NotificationRow) {
