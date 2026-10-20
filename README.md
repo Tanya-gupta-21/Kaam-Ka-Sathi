@@ -10,6 +10,7 @@ Kaam Ka Sathi brings item sharing, community needs, local services, smart sugges
 - **Post a need:** Tell the community what you are looking for and discover relevant listings.
 - **Offer local services:** Publish services and help neighbors find a suitable provider.
 - **Discover matches:** Browse suggested item and need matches, with optional AI ranking.
+- **Ask Saathi AI:** Get in-app guidance in Hindi, Hinglish, or English, with shortcuts to relevant pages. The chatbot explains app features but does not see live listings or take actions for members.
 - **Coordinate safely:** Chat with members, receive notifications, and track item handovers.
 - **Protect your experience:** Report items, needs, services, members, or chat messages; block members and manage blocks from Safety settings.
 - **Manage an account:** Register, sign in, update a profile, recover access, and use member/admin views.
@@ -36,9 +37,10 @@ AI features use the Gemini API from server-side routes and require a signed-in m
 | Draft with AI | Turns a member's notes into a suggested title, description, and category for item, need, or service forms. | Review and edit the draft before using it. |
 | Rank with AI | Reorders up to five item/need candidates using semantic relevance. | Choose which suggestion, if any, to open. |
 | Check with AI | Compares a resized item photo with the entered title/category and suggests possible edits. | Review the result; it does not verify ownership, condition, authenticity, credentials, or safety. |
+| Saathi chatbot | Answers general questions about using the app and offers links to relevant pages. | It cannot access live listings or perform account actions; do not share sensitive information. |
 | Safety report triage | When an admin chooses **Analyze with AI**, classifies the report reason, suggests a priority, and summarizes the concern for review. | Admins decide what to do. AI does not determine whether an allegation is true, remove content, or restrict an account. |
 
-AI does not publish or reject content, contact members, or complete a handover. Its suggestions may be inaccurate. When a member invokes an AI feature, the relevant notes, selected match details, or resized photo are sent to Gemini. When an admin explicitly runs report triage, only the report type, reason, and details are sent; member names, account IDs, and chat excerpts are excluded. Do not include sensitive personal information. AI endpoints require authentication and apply per-user rate limits; the Gemini key stays on the server.
+AI does not publish or reject content, contact members, or complete a handover. Its suggestions may be inaccurate. When a member invokes an AI feature, the relevant notes, selected match details, or resized photo are sent to Gemini. Chat messages and recent chat context are also sent when Saathi is used. When an admin explicitly runs report triage, only the report type, reason, and details are sent; member names, account IDs, and chat excerpts are excluded. Do not include sensitive personal information. AI endpoints require authentication and apply per-user rate limits; the Gemini key stays on the server.
 
 ## Technology
 
@@ -93,7 +95,7 @@ AI does not publish or reject content, contact members, or complete a handover. 
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes | Supabase publishable key used by browser and server clients. |
-| `GEMINI_API_KEY` | No | Enables authenticated AI drafting, ranking, and item-photo checks. |
+| `GEMINI_API_KEY` | No | Enables the authenticated chatbot, drafting, ranking, report triage, and item-photo checks. |
 | `GEMINI_MODEL` | No | Gemini model name; defaults to `gemini-flash-latest`. |
 
 Keep secret keys out of `NEXT_PUBLIC_*` variables and out of source control. `.env.local` is ignored by Git.
